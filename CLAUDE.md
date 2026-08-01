@@ -46,7 +46,7 @@ So the request path and the API path are separated completely:
 ```
 
 - **Nothing on the request path calls the 42 API.** `readDashboardView()` reads the newest stored snapshot. If the 42 API is down for a day, the board keeps showing the last good data and the header says how old it is.
-- **The browser only renders.** No data fetching, no charting library, no query client: the whole board is server markup. The only client components are the screen rotation, the clock, the fullscreen button, the live session timer and a timer that calls `router.refresh()` when the next ingest is due (`auto-refresh.tsx`). Keep it that way — if a feature seems to need client-side data, it belongs in the ingest job instead.
+- **The browser only renders.** No data fetching and no query client: every value on the board arrives as server markup or as props to a client component. Client components are kept to the leaves — the three charts (recharts), the screen rotation, the clock, the fullscreen button, the live session timer, and the timer that calls `router.refresh()` when the next ingest is due (`auto-refresh.tsx`). Keep it that way — if a feature seems to need client-side *data*, it belongs in the ingest job instead.
 - **The web server is also the worker.** `src/instrumentation.ts` starts the scheduler on boot, so the deployment stays a single container. Jobs take a Postgres advisory lock, so extra instances don't multiply 42 API traffic.
 
 There is no OAuth/session layer. Every data source the dashboard needs (locations, projects_users, cursus_users, blocs/coalitions) is available with the app's own `client_credentials` token — no signed-in user is ever required, so `/me`, `/auth/signin`, and iron-session were removed entirely rather than kept unused.
@@ -96,7 +96,7 @@ There is no OAuth/session layer. Every data source the dashboard needs (location
 3. **Achievements** — `recent-passes.tsx` (recently validated projects), full width.
 4. **Coalitions** — top half is `coalition-score-chart.tsx` (each coalition's real season-to-date score history reconstructed from the API ledger, with a legend — colors are each coalition's own API-provided brand color, not a reassigned categorical palette; the Y axis is fitted to the data rather than zero-based); bottom half is `top-contributors.tsx` (top 5 students by score per coalition, one column per coalition).
 
-**All three charts are server-rendered SVG/CSS, not a charting library.** recharts was removed along with React Query: on a display nobody touches, tooltips and animation bought nothing and cost the browser a chart runtime. A donut is a stroked circle with a dash per wedge, a bar chart is divs with a width percentage, a line chart is a `<polyline>`. Add charts the same way rather than reintroducing the dependency.
+**The three charts are client components (recharts); everything around them is server-rendered.** They are the deliberate exception to the server-first rule — recharts measures its container in the browser, so the charts fit whatever panel they land in. They still take their data as props from the server: a chart never fetches. Keep new charts to the same shape (`"use client"` leaf, data in via props), and keep everything that isn't a chart on the server.
 
 There is no tab/nav UI for switching screens on purpose — this is a passive display, not an app someone clicks through.
 
@@ -113,7 +113,7 @@ Before adding a new API call, weigh it against the rate budget (2 req/s, 1200 re
 
 ## Key conventions
 
-- **The browser never fetches campus data.** No client-side data fetching, no `useEffect` loading, no charting library. If a screen needs something new, the ingest job computes it and the server renders it.
+- **The browser never fetches campus data.** No client-side data fetching, no `useEffect` loading. Client components render props; they never go and get anything. If a screen needs something new, the ingest job computes it and the server passes it down.
 - Never call the 42 API from the request path (page render or route handler) — only from a job. A slow or 429ing API must never be able to slow down or blank the wall display.
 - Treat partial data as normal: aggregation code should soft-fail per-section (push to an `errors` array) rather than throwing, matching the existing pattern in `dashboard-service.ts`.
 - Don't fabricate data to fill gaps (e.g. missing historical XP, full logtime podiums) — this is an explicit product constraint recorded in the README and `docs/42-api-data-map.md`; leave the section out rather than inventing data.

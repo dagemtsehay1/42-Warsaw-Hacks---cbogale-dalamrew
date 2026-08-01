@@ -27,12 +27,14 @@ Everything a passerby wants to glance at, rotating automatically:
 - Next.js 16 (App Router, server components)
 - React 19 + TypeScript
 - PostgreSQL 17 (Docker) via `pg`
+- Recharts (the three charts, client-side; everything else is server-rendered)
 - Zustand (screen rotation state only, persisted locally)
 - Tailwind CSS 4
 - Vitest
 
-No client-side data layer and no charting library: the charts are server-rendered
-SVG/CSS, so the browser downloads markup and almost no JavaScript.
+No client-side data layer: the board is server-rendered and the browser only ever
+renders. The charts are the one client-side piece (recharts, so they resize to
+their panel) and they take their data as props — nothing in the browser fetches.
 
 ## Architecture
 
