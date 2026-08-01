@@ -1,0 +1,114 @@
+/** Raw 42 API response shapes (subset of fields we use). */
+
+export type FortyTwoImageVersions = {
+  large?: string;
+  medium?: string;
+  small?: string;
+  micro?: string;
+};
+
+export type FortyTwoUserImage = {
+  link?: string | null;
+  versions?: FortyTwoImageVersions;
+};
+
+export type FortyTwoCampus = {
+  id: number;
+  name: string;
+  time_zone: string;
+  users_count: number;
+  country: string;
+  city: string;
+  website?: string;
+  active: boolean;
+};
+
+export type FortyTwoUser = {
+  id: number;
+  login: string;
+  first_name: string;
+  last_name: string;
+  usual_full_name?: string;
+  displayname?: string;
+  image: FortyTwoUserImage;
+  staff?: boolean;
+};
+
+export type FortyTwoProjectsUser = {
+  id: number;
+  final_mark?: number | null;
+  status: string;
+  /**
+   * The API really does name this key `validated?`, question mark included — it is
+   * not an optional `validated`. Reading `item.validated` silently yields undefined.
+   */
+  "validated?"?: boolean | null;
+  project: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  marked_at?: string | null;
+  marked: boolean;
+  created_at: string;
+  updated_at: string;
+  user?: FortyTwoUser;
+};
+
+export type FortyTwoCoalition = {
+  id: number;
+  name: string;
+  slug: string;
+  image_url?: string;
+  cover_url?: string;
+  color: string;
+  score: number;
+};
+
+export type FortyTwoBloc = {
+  id: number;
+  campus_id: number;
+  cursus_id: number;
+  coalition_ids: number[];
+};
+
+export type FortyTwoCoalitionUser = {
+  id: number;
+  coalition_id: number;
+  user_id: number;
+  score: number;
+  rank: number;
+};
+
+/** One entry of a coalition's append-only score ledger. */
+export type FortyTwoScore = {
+  id: number;
+  coalition_id: number;
+  value: number;
+  reason?: string | null;
+  created_at: string;
+};
+
+export type FortyTwoLocation = {
+  id: number;
+  begin_at: string;
+  end_at: string | null;
+  primary: boolean;
+  host: string;
+  campus_id: number;
+  user: FortyTwoUser;
+};
+
+export type FortyTwoTokenResponse = {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  refresh_token?: string;
+  scope: string;
+  created_at: number;
+};
+
+export type FortyTwoApiErrorBody = {
+  error?: string;
+  message?: string;
+};

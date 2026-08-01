@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0c0e10;
+  --foreground: #e8ecef;
+  --muted: #8b949e;
+  --panel: #12161a;
+  --panel-elevated: #1a2026;
+  --panel-hover: #222a32;
+  --border: #2a323a;
+  --accent: #00babc;
+  --accent-dim: rgba(0, 186, 188, 0.28);
+  --accent-foreground: #041516;
+  --warning: #d4a017;
+  --danger: #e35d6a;
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-panel: var(--panel);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-space-grotesk);
+  --font-mono: var(--font-jetbrains);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), "Segoe UI", sans-serif;
+  background-image:
+    linear-gradient(rgba(0, 186, 188, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 186, 188, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  background-position: center top;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--foreground);
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  animation: ticker-scroll 60s linear infinite;
+}
+
+/* Partner strip: same loop, paced slower so each logo is readable in passing. */
+.logo-track {
+  animation: ticker-scroll 90s linear infinite;
+}
+
+@keyframes board-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.board-screen {
+  animation: board-fade 400ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track,
+  .logo-track,
+  .board-screen,
+  .animate-pulse,
+  .animate-spin {
+    animation: none !important;
+  }
+}
