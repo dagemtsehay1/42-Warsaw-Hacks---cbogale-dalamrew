@@ -36,12 +36,17 @@ export function formatClock(date: Date): string {
   });
 }
 
+/** A span of time, e.g. "9h 12m" or "42m". */
+export function formatDuration(ms: number): string {
+  const minutes = Math.max(0, Math.floor(ms / 60_000));
+  const hours = Math.floor(minutes / 60);
+  return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+}
+
 /** How long a session has been running, e.g. "9h 12m" or "42m". */
 export function formatSessionLength(from: Date | string, now = Date.now()): string {
   const start = typeof from === "string" ? new Date(from) : from;
-  const minutes = Math.max(0, Math.floor((now - start.getTime()) / 60_000));
-  const hours = Math.floor(minutes / 60);
-  return hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+  return formatDuration(now - start.getTime());
 }
 
 /**

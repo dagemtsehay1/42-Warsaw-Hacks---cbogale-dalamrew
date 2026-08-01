@@ -67,6 +67,29 @@ export async function fetchEarliestLocationToday(
 }
 
 /**
+ * Every session that *started* since `sinceIso` — the Hall of Fame's week.
+ *
+ * Warsaw runs ~840 sessions a week (9 pages), so this is the second-heaviest call
+ * on the dashboard after the coalition ledgers; `maxPages` bounds it at a quiet
+ * fortnight's worth. A session that began before the window and ended inside it
+ * is not returned: the board is "longest session started this week", not "longest
+ * session overlapping this week".
+ */
+export async function fetchLocationsSince(campusId: number, sinceIso: string) {
+  return fortyTwoFetchAllPages<FortyTwoLocation>(
+    `/v2/campus/${campusId}/locations`,
+    {
+      pageSize: 100,
+      maxPages: 12,
+      searchParams: {
+        "range[begin_at]": `${sinceIso},${new Date().toISOString()}`,
+        sort: "-begin_at",
+      },
+    },
+  );
+}
+
+/**
  * `/v2/projects_users` **ignores `sort` entirely** — `-marked_at`, `-updated_at` and
  * `-id` all return the same page, oldest records first, so asking for "the newest N"
  * by sorting silently returns Warsaw's 2021 opening week instead.

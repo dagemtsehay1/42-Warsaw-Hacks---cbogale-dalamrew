@@ -13,7 +13,7 @@ const loadDashboard = unstable_cache(
   // Version suffix: the cache outlives a deploy, so an entry written against an
   // older `DashboardPayload` shape would be served to a board that expects the
   // new fields. Bump it whenever the payload gains or loses a field.
-  ["campus-dashboard-v3"],
+  ["campus-dashboard-v4"],
   { revalidate: DASHBOARD_STALE_MS / 1000 },
 );
 

@@ -144,6 +144,8 @@ export function CampusBoard({
                   <PresenceBoard
                     presence={data.presence}
                     earliestLogin={data.earliestLogin}
+                    topSessionThisWeek={data.topSessionThisWeek}
+                    weekStart={data.weekStart}
                   />
                 </div>
               </>

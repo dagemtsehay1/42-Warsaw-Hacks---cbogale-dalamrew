@@ -52,6 +52,15 @@ export type PresenceStudent = {
   beginAt: string;
 };
 
+/**
+ * One host session. `endAt: null` means it is still running, so the UI keeps
+ * counting past `durationMs` (which is only accurate as of `fetchedAt`).
+ */
+export type SessionRecord = PresenceStudent & {
+  endAt: string | null;
+  durationMs: number;
+};
+
 export type CampusPulse = {
   studentsOnCampus: number;
   projectsPassedToday: number;
@@ -103,6 +112,10 @@ export type DashboardPayload = {
   activeProjects: ActiveProjectStat[];
   presence: PresenceStudent[];
   earliestLogin: PresenceStudent | null;
+  /** Start of the current week (Sunday, campus-local) the Hall of Fame covers. */
+  weekStart: string;
+  /** Longest single host session that started since `weekStart`. */
+  topSessionThisWeek: SessionRecord | null;
   coalitions: CoalitionSummary[];
   coalitionScoreHistory: CoalitionScorePoint[];
   coalitionContributors: CoalitionContributors[];

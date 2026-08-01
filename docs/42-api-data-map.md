@@ -14,10 +14,10 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 | Field | Value |
 |-------|-------|
 | Feature | `/api/campus/dashboard` aggregate payload |
-| Endpoints | `/v2/campus/:id/locations` (active + earliest-today), `/v2/projects_users` (finished + in_progress), `/v2/blocs`, `/v2/blocs/:id/coalitions`, `/v2/cursus/:id/cursus_users` (campus stats), `/v2/coalitions/:id/coalitions_users` (one call per coalition), `/v2/users` (one bulk call for contributor profiles) |
+| Endpoints | `/v2/campus/:id/locations` (active + earliest-today + this week's sessions), `/v2/projects_users` (finished + in_progress), `/v2/blocs`, `/v2/blocs/:id/coalitions`, `/v2/cursus/:id/cursus_users` (campus stats), `/v2/coalitions/:id/coalitions_users` (one call per coalition), `/v2/users` (one bulk call for contributor profiles) |
 | Transformation | See `src/features/campus/dashboard-service.ts` |
 | Refresh | 30 minutes (`staleTime` + `refetchInterval`) |
-| Limitations | Aggregation is rate-limit sensitive; partial failures soft-fail per section. Core sections use 5 parallel calls per refresh (1–2 pages each); `cursus_users` then runs **sequentially after** that block (6 pages for Warsaw) because riding along in the parallel burst pushes it past 2 req/s and the other sections come back 429. The coalitions screen adds one `coalitions_users` call per coalition plus a single bulk `/v2/users?filter[id]=...` call for contributor names/avatars — typically 4–5 more calls for a 3–4 coalition campus, still well under the hourly budget. |
+| Limitations | Aggregation is rate-limit sensitive; partial failures soft-fail per section. Core sections use 5 parallel calls per refresh (1–2 pages each); `cursus_users` (6 pages for Warsaw) and the Hall of Fame's week of locations (9 pages) then run **sequentially after** that block, because riding along in the parallel burst pushes it past 2 req/s and the other sections come back 429. The coalitions screen adds one `coalitions_users` call per coalition plus a single bulk `/v2/users?filter[id]=...` call for contributor names/avatars — typically 4–5 more calls for a 3–4 coalition campus, still well under the hourly budget. |
 
 ---
 
@@ -37,11 +37,11 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 
 | Field | Value |
 |-------|-------|
-| Feature | On campus now + first session today |
-| Endpoint | `GET /v2/campus/:id/locations` (`filter[active]=true`) for current sessions, plus a single-page range query on `begin_at` for today's earliest login |
+| Feature | Hall of Fame + first session today (side by side, top), on campus now (below) |
+| Endpoint | `GET /v2/campus/:id/locations` (`filter[active]=true`) for current sessions, a single-page range query on `begin_at` for today's earliest login, and a `range[begin_at]=<Sunday>,<now>` query (9 pages for Warsaw, ~840 sessions) for the Hall of Fame week |
 | Fields | `begin_at`, `end_at`, `host`, `user` |
 | Refresh | 30 min |
-| Limitations | Host login ≠ "working on a project". Earliest login uses the first known location begin time today; a student who already logged out won't appear in the active list but is still captured by the earliest-login query. |
+| Limitations | Host login ≠ "working on a project". Earliest login uses the first known location begin time today; a student who already logged out won't appear in the active list but is still captured by the earliest-login query. The Hall of Fame ranks the longest **single** session that *started* this week — a session that began before Sunday and ended after it is out of the window, and an unfinished session is measured to now (so it keeps growing on screen). It is not a logtime total; a campus-wide logtime leaderboard is still out of scope. |
 
 ---
 

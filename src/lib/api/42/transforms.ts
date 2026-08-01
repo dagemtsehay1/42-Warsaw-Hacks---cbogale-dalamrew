@@ -3,6 +3,7 @@ import type {
   CoalitionSummary,
   PresenceStudent,
   ProjectPass,
+  SessionRecord,
 } from "@/types/campus";
 import type {
   FortyTwoCoalition,
@@ -89,5 +90,24 @@ export function toPresenceStudent(location: FortyTwoLocation): PresenceStudent {
     imageUrl: imageUrlFromUser(location.user),
     host: location.host,
     beginAt: location.begin_at,
+  };
+}
+
+/**
+ * A session with its length. An open session (`end_at: null`) is measured up to
+ * `now`, so its duration is only true as of the fetch — the board keeps counting
+ * from `beginAt` for those.
+ */
+export function toSessionRecord(
+  location: FortyTwoLocation,
+  now = new Date(),
+): SessionRecord {
+  const begin = new Date(location.begin_at).getTime();
+  const end = location.end_at ? new Date(location.end_at).getTime() : now.getTime();
+
+  return {
+    ...toPresenceStudent(location),
+    endAt: location.end_at ?? null,
+    durationMs: Math.max(0, end - begin),
   };
 }

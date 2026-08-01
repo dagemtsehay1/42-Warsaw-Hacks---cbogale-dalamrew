@@ -8,6 +8,7 @@ import {
   fetchCoalitionScoreEvents,
   fetchCoalitionsByBloc,
   fetchEarliestLocationToday,
+  fetchLocationsSince,
   fetchProjectsUsers,
   fetchUsersByIds,
   resolveWarsawCampusId,
@@ -18,6 +19,7 @@ import {
   buildLevelDistribution,
   currentLearners,
 } from "@/features/campus/cursus-progress";
+import { pickTopSession, weekStart } from "@/features/campus/sessions";
 import type { FortyTwoCoalition, FortyTwoUser } from "@/lib/api/42/types";
 import {
   toCoalitionContributor,
@@ -37,6 +39,7 @@ import type {
   CoalitionContributors,
   CoalitionScorePoint,
   DashboardPayload,
+  SessionRecord,
 } from "@/types/campus";
 import type { FortyTwoCursusUser } from "@/lib/api/42/types";
 import { startOfDay, startOfMonth } from "date-fns";
@@ -119,6 +122,8 @@ function buildMockDashboard(): DashboardPayload {
     activeProjects: [],
     presence: [],
     earliestLogin: null,
+    weekStart: weekStart().toISOString(),
+    topSessionThisWeek: null,
     coalitions: [],
     coalitionScoreHistory: [],
     coalitionContributors: [],
@@ -191,15 +196,25 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
       ? todayLocationsResult.value
       : [];
 
-  // Deliberately *after* the parallel block rather than a sixth entry in it:
-  // this one pages six times on its own, and firing it alongside the other five
-  // pushes the opening burst past 2 req/s — measured, the blocs call comes back
-  // 429 when it rides along.
+  // Both of these are deliberately *after* the parallel block rather than extra
+  // entries in it: they page 6 and 9 times on their own, and firing them
+  // alongside the other five pushes the opening burst past 2 req/s — measured,
+  // the blocs call comes back 429 when they ride along.
   let cursusUsers: FortyTwoCursusUser[] = [];
   try {
     cursusUsers = await fetchCampusCursusUsers(campusId, cursusId);
   } catch (error) {
     errors.push(`Campus stats: ${String(error)}`);
+  }
+
+  const weekStartedAt = weekStart();
+  let topSessionThisWeek: SessionRecord | null = null;
+  try {
+    topSessionThisWeek = pickTopSession(
+      await fetchLocationsSince(campusId, weekStartedAt.toISOString()),
+    );
+  } catch (error) {
+    errors.push(`Hall of Fame: ${String(error)}`);
   }
 
   let coalitionsRaw: FortyTwoCoalition[] = [];
@@ -378,6 +393,8 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
     activeProjects,
     presence: presence.slice(0, 24),
     earliestLogin,
+    weekStart: weekStartedAt.toISOString(),
+    topSessionThisWeek,
     coalitions,
     coalitionScoreHistory,
     coalitionContributors,
