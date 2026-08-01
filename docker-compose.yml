@@ -1,3 +1,16 @@
+# Both halves of the deployment: Postgres, and the app image that serves the
+# board *and* runs the background jobs.
+#
+#   npm run docker:up      build + start both
+#   npm run docker:logs    follow the app (ingest/forecast logs live here)
+#   npm run docker:down    stop both, keep the data
+#   npm run docker:clean   stop both and delete the images (data survives)
+#   npm run docker:nuke    ... and delete the volumes too
+#
+# Host ports are deliberately off the beaten track (APP_PORT / POSTGRES_PORT in
+# .env): 5432 collides with any locally installed Postgres — which is what the
+# `password authentication failed for user "ft42"` on Windows was — and 3000
+# with every other dev server on the machine.
 services:
   postgres:
     image: postgres:17-alpine
@@ -7,12 +20,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-ft42}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ft42}
       POSTGRES_DB: ${POSTGRES_DB:-ft42_dashboard}
+      # So `npm run db:psql` needs no arguments, on any shell.
+      PGUSER: ${POSTGRES_USER:-ft42}
+      PGDATABASE: ${POSTGRES_DB:-ft42_dashboard}
       # The campus timezone: day/week boundaries in the forecast queries are
       # campus-local, and Postgres is where several of them are computed.
       TZ: Europe/Warsaw
       PGTZ: Europe/Warsaw
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-26542}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -21,5 +37,39 @@ services:
       timeout: 5s
       retries: 5
 
+  app:
+    build:
+      context: .
+    # No `image:` tag on purpose — compose's `down --rmi local` (what
+    # `npm run docker:clean` runs) only deletes images it named itself, and
+    # would skip a custom-tagged one while still leaving it on disk.
+    container_name: ft-warsaw-app
+    restart: unless-stopped
+    # The 42 credentials and CAMPUS_TIMEZONE come straight from .env.
+    env_file:
+      - .env
+    environment:
+      # Overrides whatever .env says: inside the compose network the database is
+      # the service name on its own port, never the published host port. `.env`
+      # keeps pointing at localhost so `npm run dev` still works on the host.
+      DATABASE_URL: postgres://${POSTGRES_USER:-ft42}:${POSTGRES_PASSWORD:-ft42}@postgres:5432/${POSTGRES_DB:-ft42_dashboard}
+      TZ: ${CAMPUS_TIMEZONE:-Europe/Warsaw}
+    ports:
+      - "${APP_PORT:-27942}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      # Coalition score deltas (data/snapshots/*.json) — see the Dockerfile.
+      - snapshots:/app/data/snapshots
+    healthcheck:
+      # The stored-snapshot JSON view: no 42 API call, two indexed queries.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/campus/dashboard >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
 volumes:
   pgdata:
+  snapshots:

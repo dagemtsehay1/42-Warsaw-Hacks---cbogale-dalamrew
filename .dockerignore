@@ -1,0 +1,29 @@
+# Reinstalled inside the image for the right platform (musl) — never copy the
+# host's node_modules in, a Windows or macOS build of sharp/SWC will not run.
+node_modules
+.next
+out
+build
+
+.git
+.gitignore
+
+# Credentials reach the container through compose's `env_file`, at run time.
+# They must never end up in an image layer.
+.env
+.env.*
+
+# Written at runtime into the mounted volume.
+data
+
+*.md
+docs
+.claude
+.vscode
+.idea
+npm-debug.log*
+yarn-error.log*
+tsconfig.tsbuildinfo
+Dockerfile
+.dockerignore
+docker-compose.yml

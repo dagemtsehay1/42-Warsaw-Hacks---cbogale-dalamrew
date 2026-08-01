@@ -10,9 +10,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:up": "docker compose up -d",
+    "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
-    "db:psql": "docker compose exec postgres psql -U ${POSTGRES_USER:-ft42} -d ${POSTGRES_DB:-ft42_dashboard}"
+    "db:psql": "docker compose exec postgres psql",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f app",
+    "docker:clean": "docker compose down --rmi local --remove-orphans",
+    "docker:nuke": "docker compose down -v --rmi local --remove-orphans"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

@@ -62,8 +62,10 @@ See [docs/42-api-data-map.md](docs/42-api-data-map.md) for feature → endpoint 
 
 1. Create an application at [Intra OAuth Applications](https://profile.intra.42.fr/oauth/applications) — no redirect URI is needed, the dashboard never performs the user OAuth flow.
 2. `cp .env.example .env` and fill in the Client ID / Secret.
-3. `npm run db:up` — starts PostgreSQL in Docker (`docker-compose.yml`). If port 5432 is taken, change `POSTGRES_PORT` **and** the port in `DATABASE_URL`.
+3. `npm run db:up` — starts PostgreSQL in Docker (`docker-compose.yml`) on port **26542**. If you change `POSTGRES_PORT`, change the port in `DATABASE_URL` to match.
 4. `npm install && npm run dev`.
+
+Or skip steps 3–4 and run the whole thing in Docker — see [Running everything in Docker](#running-everything-in-docker).
 
 The schema is applied automatically on boot, and the first ingest starts
 immediately: expect the board to be empty for a minute or two while the 60-day
@@ -81,14 +83,25 @@ FORTYTWO_API_BASE_URL=https://api.intra.42.fr
 FORTYTWO_CAMPUS_ID=
 FORTYTWO_CURSUS_ID=21
 
-DATABASE_URL=postgres://ft42:ft42@localhost:5432/ft42_dashboard
+DATABASE_URL=postgres://ft42:ft42@localhost:26542/ft42_dashboard
 POSTGRES_USER=ft42
 POSTGRES_PASSWORD=ft42
 POSTGRES_DB=ft42_dashboard
-POSTGRES_PORT=5432
+POSTGRES_PORT=26542
+APP_PORT=27942
 
 CAMPUS_TIMEZONE=Europe/Warsaw
 ```
+
+The two host ports are deliberately unusual. 5432 is taken by any locally
+installed Postgres — on Windows that server answers first and rejects the login
+with `password authentication failed for user "ft42"`, which looks like a
+password problem but is a *wrong server* problem — and 3000 is taken by every
+other dev server on the machine.
+
+`DATABASE_URL` is the **host** connection string, used by `npm run dev` and
+`npm run build`. The containerised app ignores it: compose points it at
+`postgres:5432` on the internal network instead.
 
 Never commit real credentials.
 
@@ -135,6 +148,37 @@ npm start
 ```
 
 For a wall display, open `/dashboard/display` in a dedicated browser profile and use Fullscreen (or OS kiosk mode).
+
+## Running everything in Docker
+
+One command builds the app image and starts both containers — Postgres, and the
+app that serves the board *and* runs the ingest/forecast jobs:
+
+```bash
+npm run docker:up      # build + start both, in the background
+```
+
+Then open [http://localhost:27942/dashboard](http://localhost:27942/dashboard)
+(kiosk: `/dashboard/display`). The first boot applies the schema and starts the
+60-day session backfill, so the board fills in over a few minutes.
+
+| Command | Does |
+|---------|------|
+| `npm run docker:up` | Build the image and start both containers (rerun it to redeploy after a code change) |
+| `npm run docker:logs` | Follow the app log — `[jobs] ingest ok`, forecast runs, 42 API errors |
+| `npm run docker:down` | Stop both containers. Images and data stay |
+| `npm run docker:clean` | Stop both and **delete the images**. Snapshots and session history survive in the volumes |
+| `npm run docker:nuke` | Also delete the volumes — the 60-day session history is gone and the next boot re-backfills it (~3 min) |
+| `npm run db:psql` | psql shell into the database |
+
+`.env` is read at container start, so credential or timezone changes need only a
+`npm run docker:up`, not a rebuild.
+
+The two workflows share one Postgres: `npm run db:up` starts *only* the database
+for `npm run dev` on the host, against the same `pgdata` volume the containerised
+app uses. Don't run `npm run dev` and `npm run docker:up` at once — two
+schedulers on one database is exactly what the advisory lock in
+`src/lib/jobs/scheduler.ts` is there to survive, but the ingest logs get confusing.
 
 ## Dashboard display mode
 
@@ -185,6 +229,10 @@ npm run build
 npm run lint
 npm run typecheck
 npm test
+
+npm run db:up        # Postgres only (for `npm run dev`)
+npm run docker:up    # everything, in containers
+npm run docker:clean # stop and delete the images
 ```
 
 ## License

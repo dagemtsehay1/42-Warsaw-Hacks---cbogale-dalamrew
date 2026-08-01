@@ -11,7 +11,7 @@ instruction as stale/inapplicable and rely on standard Next.js 16 App Router con
 ## Commands
 
 ```bash
-npm run db:up        # start the Postgres container (docker compose)
+npm run db:up        # start only the Postgres container (docker compose)
 npm run dev          # start dev server (redirects / -> /dashboard)
 npm run build        # production build
 npm start            # run production build
@@ -21,7 +21,18 @@ npm test             # vitest run (single run, CI-style)
 npm run test:watch   # vitest watch mode
 npm run db:psql      # psql shell into the container
 npm run db:down      # stop Postgres (data survives in the `pgdata` volume)
+
+npm run docker:up    # build + start app AND Postgres (app on APP_PORT, default 27942)
+npm run docker:logs  # follow the app container (job logs live here)
+npm run docker:down  # stop both, keep images and data
+npm run docker:clean # stop both and delete the images (volumes survive)
+npm run docker:nuke  # ... and delete the volumes too (re-backfills 60 days on next boot)
 ```
+
+Host ports are intentionally non-standard (`POSTGRES_PORT=26542`, `APP_PORT=27942`):
+5432 collides with a locally installed Postgres — which fails as
+`password authentication failed for user "ft42"`, since the *wrong server*
+answers — and 3000 with every other dev server.
 
 The app boots without Postgres (it falls back to building a payload per request),
 but the background jobs and the attendance forecast need it — start it first.
