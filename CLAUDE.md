@@ -113,6 +113,7 @@ Before adding a new API call, weigh it against the rate budget (2 req/s, 1200 re
 
 ## Key conventions
 
+- **Avatars come from `versions.large` and are rastered at 2× their box** (`student-avatar.tsx`). 42 portraits are 4:3 and the board square-crops them, so a raster requested at the display size is already upscaled before anyone zooms; `next/image` downscales the big source server-side, so the extra pixels cost the TV nothing.
 - **The browser never fetches campus data.** No client-side data fetching, no `useEffect` loading. Client components render props; they never go and get anything. If a screen needs something new, the ingest job computes it and the server passes it down.
 - Never call the 42 API from the request path (page render or route handler) — only from a job. A slow or 429ing API must never be able to slow down or blank the wall display.
 - Treat partial data as normal: aggregation code should soft-fail per-section (push to an `errors` array) rather than throwing, matching the existing pattern in `dashboard-service.ts`.

@@ -31,8 +31,15 @@ export function StudentAvatar({
     <Image
       src={src}
       alt={alt}
-      width={size}
-      height={size}
+      // Rastered at twice the box it is drawn in, then constrained by CSS. Two
+      // reasons, both of which showed as blur: 42 portraits are 4:3, so a raster
+      // requested at `size` wide is only 0.75 × `size` tall and `object-cover`
+      // has to stretch it back up; and a hallway TV (or a browser zoom) scales
+      // the whole page past 1:1, which a raster sized exactly to the box cannot
+      // survive.
+      width={size * 2}
+      height={size * 2}
+      style={{ width: size, height: size }}
       className={cn("shrink-0 rounded-sm object-cover", className)}
     />
   );

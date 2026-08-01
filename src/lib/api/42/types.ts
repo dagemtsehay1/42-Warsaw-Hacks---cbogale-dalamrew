@@ -1,5 +1,6 @@
 /** Raw 42 API response shapes (subset of fields we use). */
 
+/** Measured sizes: large 700×525, medium 350×263, small 175×131, micro 25×19. */
 export type FortyTwoImageVersions = {
   large?: string;
   medium?: string;

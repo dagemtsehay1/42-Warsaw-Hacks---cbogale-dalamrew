@@ -13,13 +13,27 @@ import type {
   FortyTwoUser,
 } from "./types";
 
+/**
+ * The **largest** portrait the user has, because `next/image` downscales it
+ * server-side — a big source costs the optimizer one fetch, not the TV one byte.
+ *
+ * Measured on the CDN: `micro` 25×19, `small` 175×131, `medium` 350×263,
+ * `large` 700×525, `link` (original) 640×480. The old `medium`-first choice put
+ * a 350px source behind avatars that are displayed at up to 120px **and then
+ * square-cropped** — and since these are 4:3, the crop throws away a third of
+ * the width, so anything but `large` visibly softens on a wall-sized screen.
+ */
 export function imageUrlFromUser(user: {
-  image?: { link?: string | null; versions?: { medium?: string; small?: string } };
+  image?: {
+    link?: string | null;
+    versions?: { large?: string; medium?: string; small?: string };
+  };
 }): string | undefined {
   return (
+    user.image?.versions?.large ||
+    user.image?.link ||
     user.image?.versions?.medium ||
     user.image?.versions?.small ||
-    user.image?.link ||
     undefined
   );
 }
