@@ -15,6 +15,11 @@ function tileLabel(date: string, offset: number): string {
   return offset === 1 ? "Estimated tomorrow" : `Estimated in ${weekdayLabel(date)}`;
 }
 
+/** Campus-local hour as `16:00`. */
+function formatHour(hour: number): string {
+  return `${String(hour).padStart(2, "0")}:00`;
+}
+
 /**
  * The three-day attendance outlook plus the busiest hour.
  *
@@ -46,20 +51,23 @@ export function ForecastMetrics({
           key={date}
           label={tileLabel(date, offset)}
           value={day ? day.expected : "—"}
+          // That day's own busiest hour leads the line: it is the part someone
+          // planning their day actually acts on. The range follows it.
           hint={
             day
-              ? `${formatNumber(day.low)}–${formatNumber(day.high)} · ${day.sampleDays} ${weekdayLabel(date)}s`
+              ? [
+                  day.peakHour != null ? `peak ${formatHour(day.peakHour)}` : null,
+                  `${formatNumber(day.low)}–${formatNumber(day.high)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
               : "not enough history yet"
           }
         />
       ))}
       <Metric
         label="Peak hour today"
-        value={
-          peak?.peakHour != null
-            ? `${String(peak.peakHour).padStart(2, "0")}:00`
-            : "—"
-        }
+        value={peak?.peakHour != null ? formatHour(peak.peakHour) : "—"}
         hint={
           peak?.peakStudents != null
             ? `~${formatNumber(peak.peakStudents)} on campus`
