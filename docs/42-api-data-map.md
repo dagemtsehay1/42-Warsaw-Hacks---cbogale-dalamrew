@@ -37,11 +37,11 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 
 | Field | Value |
 |-------|-------|
-| Feature | Recently passed projects + active projects by student count |
-| Endpoint | `GET /v2/projects_users` — `filter[status]=finished&filter[marked]=true&sort=-marked_at` for passes, `filter[status]=in_progress` for active work |
+| Feature | Recently passed projects (full width) |
+| Endpoint | `GET /v2/projects_users` — `filter[status]=finished&filter[marked]=true&sort=-marked_at` for passes, `filter[status]=in_progress` for the "Active projects" pulse tile on the presence screen |
 | Fields | `user.login`, `user.image`, `project.name`, `final_mark`, `marked_at`, `status` |
 | Refresh | 30 min |
-| Limitations | "Active projects" counts in-progress `projects_users` rows — inferred activity, not live IDE presence. Pagination capped to protect rate budget. |
+| Limitations | The per-project active board was cut; the in-progress fetch now only backs the "Active projects" pulse count, which counts in-progress `projects_users` rows — inferred activity, not live IDE presence. Pagination capped to protect rate budget. |
 
 ---
 

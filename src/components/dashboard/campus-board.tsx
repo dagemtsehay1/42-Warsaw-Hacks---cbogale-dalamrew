@@ -2,7 +2,6 @@
 
 import { RefreshCw } from "lucide-react";
 import { useRef } from "react";
-import { ActiveProjects } from "@/components/dashboard/active-projects";
 import { CoalitionScoreChart } from "@/components/dashboard/coalition-score-chart";
 import { DashboardClock } from "@/components/dashboard/dashboard-clock";
 import { FullscreenToggle } from "@/components/dashboard/fullscreen-toggle";
@@ -112,13 +111,8 @@ export function CampusBoard({
             )}
 
             {activeScreen === "achievements" && (
-              // Two thirds to the passes board: it carries twenty students in two
-              // columns, against eight single-line rows for active projects.
-              <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
-                <div className="min-h-0 lg:col-span-2">
-                  <RecentPasses items={data.recentPasses} />
-                </div>
-                <ActiveProjects projects={data.activeProjects} />
+              <div className="min-h-0 flex-1">
+                <RecentPasses items={data.recentPasses} />
               </div>
             )}
 

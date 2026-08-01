@@ -57,7 +57,7 @@ There is no OAuth/session layer. Every data source the dashboard needs (location
 `campus-board.tsx` renders exactly one of these at a time based on `useDisplayStore().activeScreen`, auto-advancing every `rotationIntervalMs` (see `screen-rotation.tsx`):
 
 1. **Presence** — pulse metrics header + `presence-board.tsx` (who's on campus now, who logged in first today).
-2. **Achievements** — `recent-passes.tsx` + `active-projects.tsx` (recently validated projects, and which in-progress projects have the most students on them).
+2. **Achievements** — `recent-passes.tsx` (recently validated projects), full width.
 3. **Coalitions** — top half is `coalition-score-chart.tsx` (a recharts line chart of each coalition's real season-to-date score history reconstructed from the API ledger, with a legend — colors are each coalition's own API-provided brand color, not a reassigned categorical palette; the Y axis is fitted to the data rather than zero-based); bottom half is `top-contributors.tsx` (top 5 students by score per coalition, one column per coalition).
 
 There is no tab/nav UI for switching screens on purpose — this is a passive display, not an app someone clicks through.
