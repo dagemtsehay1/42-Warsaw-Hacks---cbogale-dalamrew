@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { buildDashboardPayload } from "@/features/campus/dashboard-service";
-import { DASHBOARD_STALE_MS } from "@/lib/query/client";
+import { INGEST_INTERVAL_MS } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/types/campus";
 
 /**
@@ -14,7 +14,7 @@ const loadDashboard = unstable_cache(
   // older `DashboardPayload` shape would be served to a board that expects the
   // new fields. Bump it whenever the payload gains or loses a field.
   ["campus-dashboard-v4"],
-  { revalidate: DASHBOARD_STALE_MS / 1000 },
+  { revalidate: INGEST_INTERVAL_MS / 1000 },
 );
 
 /**

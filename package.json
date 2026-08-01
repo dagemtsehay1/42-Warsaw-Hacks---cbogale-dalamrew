@@ -9,18 +9,20 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:psql": "docker compose exec postgres psql -U ${POSTGRES_USER:-ft42} -d ${POSTGRES_DB:-ft42_dashboard}"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.101.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.27.0",
     "next": "16.2.12",
+    "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "recharts": "^3.10.1",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
@@ -30,6 +32,7 @@
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
+    "@types/pg": "^8.20.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.4",

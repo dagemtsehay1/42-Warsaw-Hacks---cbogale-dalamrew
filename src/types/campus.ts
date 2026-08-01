@@ -94,6 +94,34 @@ export type CampusStats = {
   projectsInProgress: number;
 };
 
+/** One day of the stored attendance outlook. */
+export type DayForecast = {
+  /** Campus-local `YYYY-MM-DD`. */
+  targetDate: string;
+  expected: number;
+  low: number;
+  high: number;
+  /** Campus-local hour (0–23) the day is fullest, or null when unknown. */
+  peakHour: number | null;
+  peakStudents: number | null;
+  sampleDays: number;
+};
+
+/**
+ * What the server hands the board: the stored payload plus the freshness and
+ * forecast metadata the UI needs. The browser never sees the 42 API.
+ */
+export type DashboardView = {
+  payload: DashboardPayload | null;
+  /** When the ingest that produced `payload` ran. */
+  capturedAt: string;
+  /** When the board should reload — just after the next ingest is due. */
+  nextRefreshAt: string;
+  stale: boolean;
+  source: "database" | "warming-up" | "live";
+  forecast: DayForecast[];
+};
+
 export type DisplayScreenId =
   | "stats"
   | "presence"

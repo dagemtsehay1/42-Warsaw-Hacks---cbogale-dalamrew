@@ -1,16 +1,15 @@
 import { CampusBoard } from "@/components/dashboard/campus-board";
-import { getInitialDashboard } from "@/features/campus/initial-dashboard";
+import { readDashboardView } from "@/features/campus/dashboard-repository";
 
 export const metadata = {
   title: "Dashboard",
 };
 
-// Rendered per request rather than prerendered: the build machine has no 42 API
-// credentials, so a build-time render would bake in the empty mock payload. The
-// expensive part is cached in `getInitialDashboard`, so this stays fast.
+// Rendered per request — but the request only reads the stored snapshot, so it
+// is two indexed queries rather than a walk of the 42 API.
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const initialData = await getInitialDashboard();
-  return <CampusBoard initialData={initialData} />;
+  const view = await readDashboardView();
+  return <CampusBoard view={view} />;
 }

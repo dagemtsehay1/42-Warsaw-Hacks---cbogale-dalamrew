@@ -17,11 +17,11 @@ function getFullscreenServerSnapshot() {
   return false;
 }
 
-export function FullscreenToggle({
-  targetRef,
-}: {
-  targetRef?: React.RefObject<HTMLElement | null>;
-}) {
+/**
+ * The board is a server component and can't hand a ref down, so the fullscreen
+ * target is looked up by id at click time instead.
+ */
+export function FullscreenToggle({ targetId }: { targetId?: string }) {
   const active = useSyncExternalStore(
     subscribeFullscreen,
     getFullscreenSnapshot,
@@ -37,7 +37,9 @@ export function FullscreenToggle({
         await document.exitFullscreen();
         return;
       }
-      const el = targetRef?.current ?? document.documentElement;
+      const el =
+        (targetId ? document.getElementById(targetId) : null) ??
+        document.documentElement;
       if (el.requestFullscreen) {
         await el.requestFullscreen();
       } else {
@@ -46,7 +48,7 @@ export function FullscreenToggle({
     } catch {
       window.location.href = "/dashboard/display";
     }
-  }, [targetRef]);
+  }, [targetId]);
 
   if (!supported) {
     return (

@@ -75,12 +75,16 @@ export async function fetchEarliestLocationToday(
  * is not returned: the board is "longest session started this week", not "longest
  * session overlapping this week".
  */
-export async function fetchLocationsSince(campusId: number, sinceIso: string) {
+export async function fetchLocationsSince(
+  campusId: number,
+  sinceIso: string,
+  maxPages = 12,
+) {
   return fortyTwoFetchAllPages<FortyTwoLocation>(
     `/v2/campus/${campusId}/locations`,
     {
       pageSize: 100,
-      maxPages: 12,
+      maxPages,
       searchParams: {
         "range[begin_at]": `${sinceIso},${new Date().toISOString()}`,
         sort: "-begin_at",

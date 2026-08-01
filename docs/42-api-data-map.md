@@ -2,7 +2,9 @@
 
 Maps dashboard features to official 42 Intra API endpoints (`https://api.intra.42.fr/v2`).
 
-Rate limits (default): **2 requests/second**, **1200 requests/hour**. All traffic goes through the Next.js BFF using the app's own `client_credentials` token; the browser never talks to the 42 API and there is no user OAuth flow.
+Rate limits (default): **2 requests/second**, **1200 requests/hour**. All traffic goes through the app's own `client_credentials` token; the browser never talks to the 42 API and there is no user OAuth flow.
+
+**Every call below happens in the background ingest job, once every 30 minutes** (`src/features/campus/ingest.ts`), never on a page load. Pages read the stored snapshot out of Postgres. One ingest costs roughly 85–95 requests, so the schedule uses ~190/hour of the 1200/hour budget; the first ingest after a fresh install adds a one-off ~75-page session backfill.
 
 Campus resolution: `GET /v2/campus` → find name/city `Warsaw`, or `FORTYTWO_CAMPUS_ID`.
 Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
@@ -37,10 +39,11 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 
 | Field | Value |
 |-------|-------|
-| Feature | Hall of Fame + first session today (side by side, top), on campus now (below) |
+| Feature | Attendance outlook + peak hour (metric row), Hall of Fame + first session today (side by side), on campus now (below) |
 | Endpoint | `GET /v2/campus/:id/locations` (`filter[active]=true`) for current sessions, a single-page range query on `begin_at` for today's earliest login, and a `range[begin_at]=<Sunday>,<now>` query (9 pages for Warsaw, ~840 sessions) for the Hall of Fame week |
 | Fields | `begin_at`, `end_at`, `host`, `user` |
 | Refresh | 30 min |
+| Derived | The "estimated tomorrow / in <day>" tiles and "peak hour today" are **not** an API feature — no 42 endpoint forecasts attendance. They are fitted locally from the same `locations` data, stored in `location_sessions` (60 days) and recomputed once a day; see the README's *Attendance forecast* section for the estimator and its measured error. "Passed today", "passed this month" and "active projects" used to sit in these tiles and were replaced by them. |
 | Limitations | Host login ≠ "working on a project". Earliest login uses the first known location begin time today; a student who already logged out won't appear in the active list but is still captured by the earliest-login query. The Hall of Fame ranks the longest **single** session that *started* this week — a session that began before Sunday and ended after it is out of the window, and an unfinished session is measured to now (so it keeps growing on screen). It is not a logtime total; a campus-wide logtime leaderboard is still out of scope. |
 
 ---

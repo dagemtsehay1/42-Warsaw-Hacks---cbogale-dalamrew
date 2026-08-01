@@ -19,12 +19,11 @@ function getServerNow() {
 
 export function LastUpdated({
   fetchedAt,
-  isFetching,
   isError,
   className,
 }: {
+  /** When the ingest job that produced the data on screen ran. */
   fetchedAt?: string;
-  isFetching?: boolean;
   isError?: boolean;
   className?: string;
 }) {
@@ -33,7 +32,7 @@ export function LastUpdated({
   if (!fetchedAt) {
     return (
       <div className={cn("text-xs text-[var(--muted)]", className)}>
-        {isFetching ? "Loading…" : "Waiting for data"}
+        Waiting for data
       </div>
     );
   }
@@ -51,11 +50,10 @@ export function LastUpdated({
           ({formatRelativeTime(date, new Date(now))})
         </span>
       )}
-      {isFetching && (
-        <span className="ml-2 text-[var(--accent)]">Refreshing…</span>
-      )}
       {isError && (
-        <span className="ml-2 text-[var(--warning)]">Reconnecting…</span>
+        <span className="ml-2 text-[var(--warning)]">
+          Last ingest was incomplete
+        </span>
       )}
     </div>
   );

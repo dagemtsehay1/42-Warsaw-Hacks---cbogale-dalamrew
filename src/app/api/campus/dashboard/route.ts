@@ -1,28 +1,26 @@
 import { NextResponse } from "next/server";
-import { buildDashboardPayload } from "@/features/campus/dashboard-service";
-import { FortyTwoApiError } from "@/lib/api/42/config";
+import { readDashboardView } from "@/features/campus/dashboard-repository";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * The board itself is server-rendered, so this route exists for everything
+ * *else* that wants the campus data (a kiosk script, monitoring, a second
+ * screen). It reads the stored snapshot — never the 42 API — so it answers in
+ * milliseconds and keeps answering while the 42 API is down.
+ */
 export async function GET() {
   try {
-    const payload = await buildDashboardPayload();
-    return NextResponse.json(payload, {
-      headers: {
-        "Cache-Control": "private, max-age=60",
-      },
+    const view = await readDashboardView();
+    return NextResponse.json(view, {
+      headers: { "Cache-Control": "private, max-age=60" },
     });
   } catch (error) {
-    const status =
-      error instanceof FortyTwoApiError ? error.status : 500;
     const message =
-      error instanceof Error ? error.message : "Failed to build dashboard";
+      error instanceof Error ? error.message : "Failed to read dashboard";
     return NextResponse.json(
-      {
-        error: message,
-        code: error instanceof FortyTwoApiError ? error.code : "dashboard_error",
-      },
-      { status: status === 429 ? 429 : status >= 400 && status < 600 ? status : 500 },
+      { error: message, code: "dashboard_error" },
+      { status: 500 },
     );
   }
 }

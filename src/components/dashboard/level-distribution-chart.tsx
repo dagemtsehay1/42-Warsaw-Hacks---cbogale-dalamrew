@@ -1,10 +1,46 @@
-"use client";
-
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { LevelBandStat } from "@/types/campus";
 import { levelRampColor } from "@/lib/charts/palette";
 import { formatNumber, formatPercent } from "@/lib/utils/format";
 
+/** Donut geometry, in the SVG's own units. */
+const SIZE = 200;
+const RADIUS = 78;
+const THICKNESS = 30;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+/** The 2px surface gap between wedges, expressed in SVG units. */
+const GAP = 2.2;
+
+type Wedge = { id: string; color: string; dash: number; offset: number };
+
+/** Each wedge as one dash of the stroked circle, laid end to end. */
+function toWedges(bands: LevelBandStat[], total: number): Wedge[] {
+  const wedges: Wedge[] = [];
+  let offset = 0;
+
+  for (const band of bands) {
+    if (band.studentCount <= 0) continue;
+    const length = (band.studentCount / total) * CIRCUMFERENCE;
+    wedges.push({
+      id: band.id,
+      color: levelRampColor(band.level),
+      // The gap is taken out of the wedge, so neighbours never touch.
+      dash: Math.max(length - GAP, 0.5),
+      offset,
+    });
+    offset += length;
+  }
+
+  return wedges;
+}
+
+/**
+ * Students per cursus level, drawn as a server-rendered donut.
+ *
+ * Plain SVG rather than a charting library: this is a passive display, the data
+ * only changes when the page re-renders, and nobody hovers a wall-mounted TV —
+ * so shipping a chart runtime to the browser would buy nothing. Each wedge is
+ * one dash of a stroked circle, which is exactly what a donut is.
+ */
 export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
   const total = bands.reduce((sum, band) => sum + band.studentCount, 0);
 
@@ -21,10 +57,7 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
     );
   }
 
-  // Empty bands are dropped from the wedge data (a zero-value slice draws a
-  // hairline artifact at its start angle) but stay in the legend, which is where
-  // "nobody is at level 6 yet" is a readable fact rather than a rendering glitch.
-  const plotted = bands.filter((band) => band.studentCount > 0);
+  const wedges = toWedges(bands, total);
 
   return (
     <section className="flex h-full min-h-0 flex-col border border-[var(--border)] bg-[var(--panel)]">
@@ -32,44 +65,32 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
         <Heading />
       </header>
 
-      <div className="flex min-h-0 flex-1 items-center gap-4 p-4">
-        <div className="relative h-full min-h-0 flex-1">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={plotted}
-                dataKey="studentCount"
-                nameKey="label"
-                innerRadius="58%"
-                outerRadius="92%"
-                startAngle={90}
-                endAngle={-270}
-                // The 2px surface-colored ring is the gap between wedges — the
-                // separator is negative space, not a drawn border.
-                stroke="var(--panel)"
-                strokeWidth={2}
-                isAnimationActive={false}
-              >
-                {plotted.map((band) => (
-                  <Cell key={band.id} fill={levelRampColor(band.level)} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  background: "var(--panel-elevated)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 2,
-                  fontSize: 13,
-                }}
-                formatter={(value, name) => [
-                  `${formatNumber(value as number)} students`,
-                  String(name),
-                ]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+      <div className="flex min-h-0 flex-1 items-center justify-center gap-6 p-4">
+        <div className="relative aspect-square h-full max-h-[min(100%,22rem)] shrink-0">
+          <svg
+            viewBox={`0 0 ${SIZE} ${SIZE}`}
+            className="h-full w-full"
+            role="img"
+            aria-label={`Students by cursus level, ${formatNumber(total)} in total`}
+          >
+            {/* Rotated so the first band starts at twelve o'clock. */}
+            <g transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}>
+              {wedges.map((wedge) => (
+                <circle
+                  key={wedge.id}
+                  cx={SIZE / 2}
+                  cy={SIZE / 2}
+                  r={RADIUS}
+                  fill="none"
+                  stroke={wedge.color}
+                  strokeWidth={THICKNESS}
+                  strokeDasharray={`${wedge.dash} ${CIRCUMFERENCE - wedge.dash}`}
+                  strokeDashoffset={-wedge.offset}
+                />
+              ))}
+            </g>
+          </svg>
 
-          {/* Centre of the donut carries the total the wedges add up to. */}
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
             <div className="font-mono text-4xl font-semibold text-[var(--foreground)]">
               {formatNumber(total)}
@@ -80,8 +101,8 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
           </div>
         </div>
 
-        {/* Legend doubles as the table view: every band, including empty ones. */}
-        <ul className="flex shrink-0 flex-col justify-center gap-1.5 pr-2">
+        {/* The legend doubles as the table view: every band, empty ones included. */}
+        <ul className="flex shrink-0 flex-col justify-center gap-1.5">
           {bands.map((band) => (
             <li key={band.id} className="flex items-center gap-2.5 text-sm">
               <span
