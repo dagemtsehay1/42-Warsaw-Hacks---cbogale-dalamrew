@@ -111,8 +111,7 @@ function Heading() {
         Common Core Progress
       </h2>
       <p className="text-xs text-[var(--muted)]">
-        Students by cursus level — intra exposes no milestone field, so level is
-        the progress measure
+        Students by cursus level
       </p>
     </>
   );

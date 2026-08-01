@@ -81,7 +81,7 @@ export function CampusBoard({
                     <Metric
                       label="Students in cursus"
                       value={data.stats.studentsInCursus}
-                      hint={`${formatNumber(data.stats.campusMembers)} campus members`}
+                      // hint={`${formatNumber(data.stats.campusMembers)} campus members`}
                     />
                     <Metric
                       label="Average level"

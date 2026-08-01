@@ -8,8 +8,13 @@ import { cn } from "@/lib/utils/cn";
 const COLUMNS = 10;
 const ROWS = 2;
 
-/** Sparks per burst; each one is a dot flung along its own angle. */
-const SPARKS = 14;
+/**
+ * Bubbles per burst, in two rings: a wide outer one that reaches almost to the
+ * edge of the cell, and a tighter inner one on a shorter, quicker path so the
+ * burst has depth rather than reading as a single expanding circle.
+ */
+const OUTER_BUBBLES = 22;
+const INNER_BUBBLES = 12;
 
 export function RecentPasses({ items }: { items: ProjectPass[] }) {
   if (!items.length) {
@@ -88,13 +93,13 @@ function PassCard({ pass, index }: { pass: ProjectPass; index: number }) {
 }
 
 /**
- * A pure-CSS burst: one glow plus `SPARKS` dots, each rotated to its own angle
- * and thrown outwards on a loop. No canvas, no library, nothing to hydrate — it
- * renders on the server like the rest of the board.
+ * A pure-CSS burst: a glow plus two rings of bubbles, each rotated to its own
+ * angle and thrown outwards on a loop. No canvas, no library, nothing to
+ * hydrate — it renders on the server like the rest of the board.
  *
  * Bursts are staggered by card so the row doesn't pulse in unison, and the whole
  * thing stops under `prefers-reduced-motion` (see `globals.css`) — which is why
- * the gold ring and the "exam" label carry the meaning too, not the animation.
+ * the gold ring and the gold mark carry the meaning too, not the animation.
  */
 function Fireworks({ index }: { index: number }) {
   return (
@@ -104,14 +109,29 @@ function Fireworks({ index }: { index: number }) {
       aria-hidden
     >
       <span className="firework-glow" />
-      {Array.from({ length: SPARKS }).map((_, spark) => (
+
+      {Array.from({ length: OUTER_BUBBLES }).map((_, bubble) => (
         <span
-          key={spark}
+          key={`outer-${bubble}`}
           className="firework-spark"
           style={
             {
-              "--angle": `${(360 / SPARKS) * spark}deg`,
-              "--spark-delay": `${(spark % 3) * 0.14}s`,
+              "--angle": `${(360 / OUTER_BUBBLES) * bubble}deg`,
+              "--spark-delay": `${(bubble % 4) * 0.11}s`,
+            } as CSSProperties
+          }
+        />
+      ))}
+
+      {/* Offset half a step so the inner ring sits between the outer bubbles. */}
+      {Array.from({ length: INNER_BUBBLES }).map((_, bubble) => (
+        <span
+          key={`inner-${bubble}`}
+          className="firework-spark firework-spark--inner"
+          style={
+            {
+              "--angle": `${(360 / INNER_BUBBLES) * bubble + 360 / INNER_BUBBLES / 2}deg`,
+              "--spark-delay": `${(bubble % 3) * 0.17 + 0.2}s`,
             } as CSSProperties
           }
         />

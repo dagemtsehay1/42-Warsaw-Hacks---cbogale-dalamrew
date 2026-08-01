@@ -119,6 +119,50 @@ a {
   background: #f5e6b8;
 }
 
+/* Mixed sizes, and every fifth one hollow, so the burst reads as a spray of
+   bubbles instead of a ring of identical dots. */
+.firework-spark:nth-child(4n) {
+  width: 6px;
+  height: 6px;
+}
+.firework-spark:nth-child(7n) {
+  width: 12px;
+  height: 12px;
+}
+.firework-spark:nth-child(5n) {
+  background: transparent;
+  border: 2px solid var(--warning);
+}
+.firework-spark:nth-child(10n) {
+  border-color: var(--accent);
+}
+
+/* The inner ring: smaller, quicker, and it stops short of the outer one. */
+.firework-spark--inner {
+  width: 7px;
+  height: 7px;
+  animation-name: firework-spark-inner;
+  animation-duration: 2s;
+}
+
+@keyframes firework-spark-inner {
+  0% {
+    transform: rotate(var(--angle)) translateY(0) scale(0.3);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.9;
+  }
+  60% {
+    transform: rotate(var(--angle)) translateY(-46px) scale(0.9);
+    opacity: 0.85;
+  }
+  100% {
+    transform: rotate(var(--angle)) translateY(-62px) scale(0.1);
+    opacity: 0;
+  }
+}
+
 @keyframes firework-spark {
   0% {
     transform: rotate(var(--angle)) translateY(0) scale(0.4);
