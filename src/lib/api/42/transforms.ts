@@ -68,9 +68,20 @@ export function toCoalitionSummary(
   };
 }
 
+/**
+ * `projects_users` only carries `{id, name, slug, parent_id}` for the project —
+ * the `exam` boolean lives on `/v2/projects`, which would be another call per
+ * project. The slug is unambiguous enough on its own: 42 names them
+ * `exam-rank-05` and `42next-exam-rank-02`.
+ */
+function isExamProject(project: { name: string; slug: string }): boolean {
+  return /exam/i.test(project.slug) || /^exam\b/i.test(project.name);
+}
+
 export function toProjectPass(item: FortyTwoProjectsUser): ProjectPass | null {
   if (!item.user) return null;
   return {
+    isExam: isExamProject(item.project),
     id: item.id,
     login: item.user.login,
     displayName: displayNameFromUser(item.user),

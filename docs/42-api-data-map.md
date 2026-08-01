@@ -52,10 +52,11 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 
 | Field | Value |
 |-------|-------|
-| Feature | Recently passed projects (full width) |
+| Feature | Recently passed projects — 2 × 10 portrait wall, exam ranks celebrated |
 | Endpoint | `GET /v2/projects_users` — `filter[status]=finished&filter[marked]=true&sort=-marked_at` for passes, `filter[status]=in_progress` for the "Active projects" pulse tile on the presence screen |
 | Fields | `user.login`, `user.image`, `project.name`, `final_mark`, `marked_at`, `status` |
 | Refresh | 30 min |
+| Derived | "Is this an exam?" is read off the project **slug** (`exam-rank-05`, `42next-exam-rank-02`). `/v2/projects` does carry an `exam` boolean, but the `project` object nested in `projects_users` is trimmed to `{id, name, slug, parent_id}`, and resolving the flag properly would cost one extra call per distinct project. |
 | Limitations | The per-project active board was cut; the in-progress fetch now only backs the "Active projects" pulse count, which counts in-progress `projects_users` rows — inferred activity, not live IDE presence. Pagination capped to protect rate budget. |
 
 ---

@@ -77,6 +77,79 @@ a {
   animation: ticker-scroll 90s linear infinite;
 }
 
+/* Exam-pass fireworks (achievements screen). Pure CSS so the celebration costs
+   the browser nothing to hydrate: a radial glow plus dots thrown along their own
+   angle. `--angle` and the delays are set per element in `recent-passes.tsx`. */
+.firework {
+  display: grid;
+  place-items: center;
+}
+
+.firework-glow {
+  position: absolute;
+  inset: -35%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    rgba(212, 160, 23, 0.38) 0%,
+    rgba(212, 160, 23, 0.12) 45%,
+    transparent 70%
+  );
+  animation: firework-glow 2.6s ease-in-out infinite;
+  animation-delay: var(--burst-delay, 0s);
+}
+
+.firework-spark {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  background: var(--warning);
+  opacity: 0;
+  transform: rotate(var(--angle)) translateY(0) scale(0.4);
+  animation: firework-spark 2.6s ease-out infinite;
+  animation-delay: calc(var(--burst-delay, 0s) + var(--spark-delay, 0s));
+}
+
+/* Three tones per burst so it reads as fireworks rather than one flat ring. */
+.firework-spark:nth-child(3n) {
+  background: var(--accent);
+}
+.firework-spark:nth-child(3n + 1) {
+  background: #f5e6b8;
+}
+
+@keyframes firework-spark {
+  0% {
+    transform: rotate(var(--angle)) translateY(0) scale(0.4);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  55% {
+    transform: rotate(var(--angle)) translateY(-78px) scale(1);
+    opacity: 1;
+  }
+  /* Stops short of the next column: half a cell is ~92px on a 1080p panel. */
+  100% {
+    transform: rotate(var(--angle)) translateY(-96px) scale(0.15);
+    opacity: 0;
+  }
+}
+
+@keyframes firework-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
 @keyframes board-fade {
   from {
     opacity: 0;
@@ -96,8 +169,18 @@ a {
   .ticker-track,
   .logo-track,
   .board-screen,
+  .firework-glow,
+  .firework-spark,
   .animate-pulse,
   .animate-spin {
     animation: none !important;
+  }
+
+  /* The burst is decorative; the gold ring still marks the exam passes. */
+  .firework-spark {
+    display: none;
+  }
+  .firework-glow {
+    opacity: 0.6;
   }
 }

@@ -35,6 +35,8 @@ export type ProjectPass = {
   score: number | null;
   validated: boolean;
   markedAt: string | null;
+  /** An exam rank rather than an ordinary project — the board celebrates these. */
+  isExam: boolean;
 };
 
 export type ActiveProjectStat = {
