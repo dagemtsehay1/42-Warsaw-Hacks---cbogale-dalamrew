@@ -49,8 +49,8 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 
 | Field | Value |
 |-------|-------|
-| Feature | Score history line chart (top half) + top 3 contributors per coalition (bottom half) |
-| Endpoints | `GET /v2/blocs`, `GET /v2/blocs/:id/coalitions` for standings; `GET /v2/coalitions/:id/scores` (per coalition) for the score ledger behind the history chart; `GET /v2/coalitions/:id/coalitions_users` (per coalition) for contributors; `GET /v2/users?filter[id]=...` (one bulk call for every unique top-3 `user_id`) to resolve login/avatar |
+| Feature | Score history line chart (top half) + top 5 contributors per coalition (bottom half) |
+| Endpoints | `GET /v2/blocs`, `GET /v2/blocs/:id/coalitions` for standings; `GET /v2/coalitions/:id/scores` (per coalition) for the score ledger behind the history chart; `GET /v2/coalitions/:id/coalitions_users` (per coalition) for contributors; `GET /v2/users?filter[id]=...` (one bulk call for every unique top-5 `user_id`) to resolve login/avatar |
 | Fields | `name`, `slug`, `color`, `image_url`, `score` (coalition); `value`, `created_at` (scores); `user_id`, `score` (coalitions_users); `login`, `image` (users) |
 | Refresh | 30 min |
 
@@ -64,7 +64,7 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 Other API quirks worth knowing before touching this code:
 
 - `range[created_at]` is **ignored** on `/v2/coalitions/:id/scores` (`x-total` comes back identical for a 7-day and a 30-day window). Paging with `sort=-created_at` is the only way to bound the window.
-- `sort=-score` and `sort=rank` are both **rejected** by `/v2/coalitions/:id/coalitions_users` ("The score field is not sortable"), so the top 3 are sorted client-side.
+- `sort=-score` and `sort=rank` are both **rejected** by `/v2/coalitions/:id/coalitions_users` ("The score field is not sortable"), so the top 5 are sorted client-side.
 - `coalitions_users` does **not** embed a user object — only `user_id` — hence the one bulk `/v2/users?filter[id]=a,b,c` lookup (comma-separated ids work).
 - If a coalition's ledger can't be fetched, it is **omitted from the chart** rather than drawn: with no events to subtract it would plot as a flat line at its current score, which reads as "scored nothing all week" instead of "no data".
 - These per-coalition calls run **sequentially** (`mapSequentially` in `dashboard-service.ts`); firing them in parallel trips the 2 req/s limit and returns 429s. With the season-long ledger read this puts a full dashboard build at roughly 25s (~30 API calls), which is fine at a 30-minute refresh — about 60 calls/hour against a 1200/hour budget. The score fetch also paces itself at 750ms between pages, since it is the heaviest call on the dashboard.

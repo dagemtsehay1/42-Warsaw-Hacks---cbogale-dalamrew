@@ -41,24 +41,26 @@ export function TopContributors({
                 No contributor data available.
               </p>
             ) : (
-              <ul className="flex-1 divide-y divide-[var(--border)]">
+              // Five rows share the bottom half of the screen with the chart, so
+              // they run tighter than the other boards and clip rather than push.
+              <ul className="min-h-0 flex-1 divide-y divide-[var(--border)] overflow-hidden">
                 {top.map((contributor, index) => (
                   <li
                     key={contributor.login}
-                    className="flex items-center gap-3 px-4 py-3"
+                    className="flex items-center gap-3 px-4 py-2"
                   >
-                    <span className="w-5 font-mono text-lg text-[var(--muted)]">
+                    <span className="w-5 font-mono text-base text-[var(--muted)]">
                       {index + 1}
                     </span>
                     <StudentAvatar
                       src={contributor.imageUrl}
                       alt={contributor.login}
-                      size={40}
+                      size={36}
                     />
-                    <span className="min-w-0 flex-1 truncate text-base font-medium md:text-lg">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium md:text-base">
                       {contributor.login}
                     </span>
-                    <span className="font-mono text-base tabular-nums text-[var(--foreground)] md:text-lg">
+                    <span className="font-mono text-sm tabular-nums text-[var(--foreground)] md:text-base">
                       {formatNumber(contributor.score)}
                     </span>
                   </li>

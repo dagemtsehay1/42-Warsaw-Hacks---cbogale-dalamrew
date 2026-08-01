@@ -224,7 +224,7 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
       errors.push(`Top contributors for ${coalition.name}: ${String(result.reason)}`);
       return { coalitionId: coalition.id, top: [] };
     }
-    const top = [...result.value].sort((a, b) => b.score - a.score).slice(0, 3);
+    const top = [...result.value].sort((a, b) => b.score - a.score).slice(0, 5);
     return { coalitionId: coalition.id, top };
   });
 
