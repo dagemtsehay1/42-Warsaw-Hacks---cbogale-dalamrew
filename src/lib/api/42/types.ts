@@ -31,7 +31,23 @@ export type FortyTwoUser = {
   usual_full_name?: string;
   displayname?: string;
   image: FortyTwoUserImage;
-  staff?: boolean;
+  /** Question mark included, as with `validated?` on projects_users. */
+  "staff?"?: boolean;
+};
+
+/** A student's enrolment in one cursus — the level/grade record. */
+export type FortyTwoCursusUser = {
+  id: number;
+  cursus_id: number;
+  level: number;
+  /** "Cadet", "Transcender", "Alumni"; null for staff enrolments. */
+  grade?: string | null;
+  begin_at: string;
+  /** Set once the student has finished (or left) the cursus. */
+  end_at?: string | null;
+  /** Deadline the student has to validate a project by; past = blackholed. */
+  blackholed_at?: string | null;
+  user: FortyTwoUser;
 };
 
 export type FortyTwoProjectsUser = {

@@ -14,10 +14,22 @@ Default cursus: `FORTYTWO_CURSUS_ID` (usually `21` = 42cursus).
 | Field | Value |
 |-------|-------|
 | Feature | `/api/campus/dashboard` aggregate payload |
-| Endpoints | `/v2/campus/:id/locations` (active + earliest-today), `/v2/projects_users` (finished + in_progress), `/v2/blocs`, `/v2/blocs/:id/coalitions`, `/v2/coalitions/:id/coalitions_users` (one call per coalition), `/v2/users` (one bulk call for contributor profiles) |
+| Endpoints | `/v2/campus/:id/locations` (active + earliest-today), `/v2/projects_users` (finished + in_progress), `/v2/blocs`, `/v2/blocs/:id/coalitions`, `/v2/cursus/:id/cursus_users` (campus stats), `/v2/coalitions/:id/coalitions_users` (one call per coalition), `/v2/users` (one bulk call for contributor profiles) |
 | Transformation | See `src/features/campus/dashboard-service.ts` |
 | Refresh | 30 minutes (`staleTime` + `refetchInterval`) |
-| Limitations | Aggregation is rate-limit sensitive; partial failures soft-fail per section. Core sections use 5 parallel calls per refresh (1–2 pages each); the coalitions screen adds one `coalitions_users` call per coalition plus a single bulk `/v2/users?filter[id]=...` call for contributor names/avatars — typically 4–5 more calls for a 3–4 coalition campus, still well under the hourly budget. |
+| Limitations | Aggregation is rate-limit sensitive; partial failures soft-fail per section. Core sections use 5 parallel calls per refresh (1–2 pages each); `cursus_users` then runs **sequentially after** that block (6 pages for Warsaw) because riding along in the parallel burst pushes it past 2 req/s and the other sections come back 429. The coalitions screen adds one `coalitions_users` call per coalition plus a single bulk `/v2/users?filter[id]=...` call for contributor names/avatars — typically 4–5 more calls for a 3–4 coalition campus, still well under the hourly budget. |
+
+---
+
+## Campus stats screen
+
+| Field | Value |
+|-------|-------|
+| Feature | Headline campus numbers + level distribution donut + in-progress project bar chart |
+| Endpoints | `GET /v2/cursus/:cursusId/cursus_users?filter[campus_id]=…` (levels, grades, blackhole dates); `GET /v2/projects_users?filter[status]=in_progress` (already fetched for the pulse tile); `users_count` off the campus record |
+| Fields | `level`, `grade`, `begin_at`, `end_at`, `blackholed_at`, `user.staff?` |
+| Refresh | 30 min |
+| Limitations | **The API exposes no milestone field** — not on `cursus_users`, and `/v2/projects` groups only by `difficulty`/`parent` — and level is not a stand-in for one: Warsaw has Cadets (still inside the common core) as high as level 9 while Transcenders start at 14+. The donut therefore bands students by whole cursus level rather than inventing a level→milestone table; "past common core" comes from `grade` (Transcender/Alumni), which is the one authoritative signal. Warsaw's 575 enrolment rows include years of finished, blackholed and staff records, so every number is counted off current learners only (no `end_at`, blackhole not yet passed, non-staff) — see `src/features/campus/cursus-progress.ts`. |
 
 ---
 

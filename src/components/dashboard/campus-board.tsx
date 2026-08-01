@@ -2,7 +2,9 @@
 
 import { RefreshCw } from "lucide-react";
 import { useRef } from "react";
+import { ActiveProjectsChart } from "@/components/dashboard/active-projects-chart";
 import { CoalitionScoreChart } from "@/components/dashboard/coalition-score-chart";
+import { LevelDistributionChart } from "@/components/dashboard/level-distribution-chart";
 import { DashboardClock } from "@/components/dashboard/dashboard-clock";
 import { FullscreenToggle } from "@/components/dashboard/fullscreen-toggle";
 import { LastUpdated } from "@/components/dashboard/last-updated";
@@ -18,6 +20,7 @@ import { useCampusDashboard } from "@/hooks/use-campus-dashboard";
 import type { DashboardPayload } from "@/types/campus";
 import { useDisplayStore } from "@/stores/display-store";
 import { cn } from "@/lib/utils/cn";
+import { formatLevel, formatNumber } from "@/lib/utils/format";
 
 export function CampusBoard({
   displayMode = false,
@@ -84,6 +87,42 @@ export function CampusBoard({
             key={activeScreen}
             className="board-screen flex h-full min-h-0 flex-col gap-3"
           >
+            {activeScreen === "stats" && (
+              <>
+                <MetricGroup className="md:grid-cols-5">
+                  <Metric
+                    label="Students in cursus"
+                    value={data.stats.studentsInCursus}
+                    hint={`${formatNumber(data.stats.campusMembers)} campus members`}
+                  />
+                  <Metric
+                    label="Average level"
+                    value={formatLevel(data.stats.averageLevel)}
+                    hint={`top level ${formatLevel(data.stats.topLevel)}`}
+                  />
+                  <Metric
+                    label="Past common core"
+                    value={data.stats.pastCommonCore}
+                    hint="transcenders & alumni"
+                  />
+                  <Metric
+                    label="Building now"
+                    value={data.stats.studentsBuilding}
+                    hint={`${formatNumber(data.stats.projectsInProgress)} projects in progress`}
+                  />
+                  <Metric
+                    label="Blackhole in 7 days"
+                    value={data.stats.blackholeWithin7Days}
+                    hint="students at the wire"
+                  />
+                </MetricGroup>
+                <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
+                  <LevelDistributionChart bands={data.levelDistribution} />
+                  <ActiveProjectsChart projects={data.activeProjects} />
+                </div>
+              </>
+            )}
+
             {activeScreen === "presence" && (
               <>
                 <MetricGroup>

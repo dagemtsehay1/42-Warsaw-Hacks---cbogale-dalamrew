@@ -6,17 +6,19 @@ describe("display store", () => {
     useDisplayStore.setState({
       rotationEnabled: true,
       rotationIntervalMs: 20_000,
-      activeScreen: "presence",
+      activeScreen: "stats",
     });
   });
 
   it("cycles screens forward and wraps around", () => {
     useDisplayStore.getState().nextScreen();
+    expect(useDisplayStore.getState().activeScreen).toBe("presence");
+    useDisplayStore.getState().nextScreen();
     expect(useDisplayStore.getState().activeScreen).toBe("achievements");
     useDisplayStore.getState().nextScreen();
     expect(useDisplayStore.getState().activeScreen).toBe("coalitions");
     useDisplayStore.getState().nextScreen();
-    expect(useDisplayStore.getState().activeScreen).toBe("presence");
+    expect(useDisplayStore.getState().activeScreen).toBe("stats");
   });
 
   it("cycles screens backward and wraps around", () => {
@@ -26,12 +28,14 @@ describe("display store", () => {
     expect(useDisplayStore.getState().activeScreen).toBe("achievements");
     useDisplayStore.getState().prevScreen();
     expect(useDisplayStore.getState().activeScreen).toBe("presence");
+    useDisplayStore.getState().prevScreen();
+    expect(useDisplayStore.getState().activeScreen).toBe("stats");
   });
 
   it("returns to the same screen after next then prev", () => {
     useDisplayStore.getState().nextScreen();
     useDisplayStore.getState().prevScreen();
-    expect(useDisplayStore.getState().activeScreen).toBe("presence");
+    expect(useDisplayStore.getState().activeScreen).toBe("stats");
   });
 
   it("toggles rotation on and off", () => {

@@ -5,6 +5,7 @@ import type {
   FortyTwoCampus,
   FortyTwoCoalition,
   FortyTwoCoalitionUser,
+  FortyTwoCursusUser,
   FortyTwoLocation,
   FortyTwoProjectsUser,
   FortyTwoScore,
@@ -103,6 +104,26 @@ export async function fetchProjectsUsers(params: {
       ...range,
     },
   });
+}
+
+/**
+ * Every 42cursus enrolment at the campus — Warsaw returns ~575 rows (6 pages),
+ * which is years of students: finished, blackholed and staff records included.
+ * The caller narrows it to current learners (`currentLearners`).
+ *
+ * `filter[active]` is accepted by the endpoint but tracks the *user account*
+ * being active, not the enrolment, so it drops learners who simply haven't
+ * logged in lately — the filtering is done on the returned rows instead.
+ */
+export async function fetchCampusCursusUsers(campusId: number, cursusId: number) {
+  return fortyTwoFetchAllPages<FortyTwoCursusUser>(
+    `/v2/cursus/${cursusId}/cursus_users`,
+    {
+      pageSize: 100,
+      maxPages: 10,
+      searchParams: { "filter[campus_id]": campusId },
+    },
+  );
 }
 
 export async function fetchCampusBlocs(campusId: number, cursusId: number) {

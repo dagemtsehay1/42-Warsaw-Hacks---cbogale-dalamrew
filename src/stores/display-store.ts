@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import type { DisplayScreenId } from "@/types/campus";
 
 export const DISPLAY_SCREENS: { id: DisplayScreenId; label: string }[] = [
+  { id: "stats", label: "Campus Stats" },
   { id: "presence", label: "On Campus" },
   { id: "achievements", label: "Achievements" },
   { id: "coalitions", label: "Coalitions" },
@@ -24,7 +25,7 @@ function cycle(current: DisplayScreenId, delta: number): DisplayScreenId {
   const list = DISPLAY_SCREENS.map((s) => s.id);
   const index = Math.max(0, list.indexOf(current));
   const next = (index + delta + list.length) % list.length;
-  return list[next] ?? "presence";
+  return list[next] ?? "stats";
 }
 
 export const useDisplayStore = create<DisplayState>()(
@@ -32,7 +33,7 @@ export const useDisplayStore = create<DisplayState>()(
     (set, get) => ({
       rotationEnabled: true,
       rotationIntervalMs: 20_000,
-      activeScreen: "presence",
+      activeScreen: "stats",
       setRotationEnabled: (rotationEnabled) => set({ rotationEnabled }),
       setActiveScreen: (activeScreen) => set({ activeScreen }),
       nextScreen: () => set({ activeScreen: cycle(get().activeScreen, 1) }),

@@ -16,7 +16,7 @@ Everything a passerby wants to glance at, rotating automatically:
 
 ## Features
 
-- **Campus monitor** (`/dashboard`, `/dashboard/display`) rotating through three screens — Presence, Achievements, Coalitions — with a scrolling ticker, fullscreen, and 30-minute auto-refresh
+- **Campus monitor** (`/dashboard`, `/dashboard/display`) rotating through four screens — Campus Stats, Presence, Achievements, Coalitions — with a scrolling ticker, fullscreen, and 30-minute auto-refresh
 - No login, no accounts: every data source is fetched with the app's own 42 API credentials (`client_credentials`), so there is nothing to sign into
 - Secure server-side 42 API client (secrets never exposed to the browser)
 
@@ -90,7 +90,7 @@ For a wall display, open `/dashboard/display` in a dedicated browser profile and
 | `/dashboard` | Same monitor, with a manual refresh button |
 | `/dashboard/display` | Shell-less presentation mode for a dedicated kiosk browser |
 
-Both rotate through the same three screens (Presence, Achievements, Coalitions) every 20 seconds. Rotation state is stored locally via Zustand persistence.
+Both rotate through the same four screens (Campus Stats, Presence, Achievements, Coalitions) every 20 seconds. Rotation state is stored locally via Zustand persistence.
 
 ## Fullscreen mode
 
@@ -108,6 +108,10 @@ The Fullscreen control uses the browser Fullscreen API. If unavailable, it falls
 The coalition line chart is built from real 42 data: the API exposes each coalition's current total plus `/v2/coalitions/:id/scores`, an append-only ledger of individual score events, so the whole season is reconstructed by walking that ledger backwards from the current score.
 
 Coalition scores are wiped between seasons and those resets are *not* written to the ledger — the Warsaw ledger reaches back to 2024 and sums to roughly twelve times the live score. The chart therefore starts at the last reset, found by walking back until the running score would cross zero. No local history file is involved and no points are invented; if the ledger doesn't cover a coalition, that series is left off the chart rather than drawn flat.
+
+## Cursus levels, not milestones
+
+The Campus Stats screen bands students by whole cursus level rather than by common-core milestone. The intra API has no milestone field — neither `cursus_users` nor `/v2/projects` (which groups only by `difficulty`/`parent`) exposes one — and level can't stand in for it: Warsaw currently has Cadets still inside the common core as high as level 9, against Transcenders starting at 14. Inventing a level→milestone table would put wrong numbers on the wall, so the chart shows the measure the API actually publishes; "past common core" is taken from `grade` (Transcender/Alumni), which is authoritative.
 
 ## Snapshots
 

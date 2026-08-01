@@ -3,6 +3,7 @@ import { getDefaultCursusId, hasFortyTwoCredentials } from "@/lib/api/42/config"
 import {
   fetchActiveLocations,
   fetchCampusBlocs,
+  fetchCampusCursusUsers,
   fetchCoalitionContributors,
   fetchCoalitionScoreEvents,
   fetchCoalitionsByBloc,
@@ -12,6 +13,11 @@ import {
   resolveWarsawCampusId,
 } from "@/lib/api/42/resources";
 import { buildCoalitionScoreHistory } from "@/features/campus/coalition-history";
+import {
+  buildCampusStats,
+  buildLevelDistribution,
+  currentLearners,
+} from "@/features/campus/cursus-progress";
 import type { FortyTwoCoalition, FortyTwoUser } from "@/lib/api/42/types";
 import {
   toCoalitionContributor,
@@ -32,6 +38,7 @@ import type {
   CoalitionScorePoint,
   DashboardPayload,
 } from "@/types/campus";
+import type { FortyTwoCursusUser } from "@/lib/api/42/types";
 import { startOfDay, startOfMonth } from "date-fns";
 
 /**
@@ -70,6 +77,9 @@ function passWindowStart(now = new Date()): Date {
 /** In-progress work only counts as active if it has been touched recently. */
 const ACTIVE_PROJECT_WINDOW_DAYS = 14;
 
+/** Bars on the campus-stats screen's "What campus is building" chart. */
+const ACTIVE_PROJECT_CHART_LIMIT = 10;
+
 function isToday(iso: string | null | undefined, now = new Date()): boolean {
   if (!iso) return false;
   const d = new Date(iso);
@@ -94,6 +104,17 @@ function buildMockDashboard(): DashboardPayload {
       projectsPassedMonth: 0,
       activeProjects: 0,
     },
+    stats: {
+      studentsInCursus: 0,
+      campusMembers: 0,
+      averageLevel: 0,
+      topLevel: 0,
+      pastCommonCore: 0,
+      blackholeWithin7Days: 0,
+      studentsBuilding: 0,
+      projectsInProgress: 0,
+    },
+    levelDistribution: buildLevelDistribution([]),
     recentPasses: [],
     activeProjects: [],
     presence: [],
@@ -169,6 +190,17 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
     todayLocationsResult.status === "fulfilled"
       ? todayLocationsResult.value
       : [];
+
+  // Deliberately *after* the parallel block rather than a sixth entry in it:
+  // this one pages six times on its own, and firing it alongside the other five
+  // pushes the opening burst past 2 req/s — measured, the blocs call comes back
+  // 429 when it rides along.
+  let cursusUsers: FortyTwoCursusUser[] = [];
+  try {
+    cursusUsers = await fetchCampusCursusUsers(campusId, cursusId);
+  } catch (error) {
+    errors.push(`Campus stats: ${String(error)}`);
+  }
 
   let coalitionsRaw: FortyTwoCoalition[] = [];
   if (blocs[0]) {
@@ -288,7 +320,18 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
 
   const activeProjects = [...projectMap.values()]
     .sort((a, b) => b.studentCount - a.studentCount)
-    .slice(0, 8);
+    .slice(0, ACTIVE_PROJECT_CHART_LIMIT);
+
+  const learners = currentLearners(cursusUsers);
+  const levelDistribution = buildLevelDistribution(learners);
+  const stats = buildCampusStats(learners, {
+    campusMembers: campus.users_count,
+    studentsBuilding: new Set(
+      active.map((item) => item.user?.id).filter(Boolean),
+    ).size,
+    // `projectMap` holds every distinct project, not just the charted top few.
+    projectsInProgress: projectMap.size,
+  });
 
   const presence = locations
     .map((loc) => toPresenceStudent(loc))
@@ -319,7 +362,8 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
     studentsOnCampus: presence.length,
     projectsPassedToday: passedToday,
     projectsPassedMonth: passedMonth,
-    activeProjects: activeProjects.length,
+    // Every distinct project, not the charted top ten.
+    activeProjects: stats.projectsInProgress,
   };
 
   return {
@@ -328,6 +372,8 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
     cursusId,
     fetchedAt: new Date().toISOString(),
     pulse,
+    stats,
+    levelDistribution,
     recentPasses,
     activeProjects,
     presence: presence.slice(0, 24),
