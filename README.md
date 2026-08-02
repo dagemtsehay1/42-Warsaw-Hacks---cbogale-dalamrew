@@ -1,240 +1,169 @@
+*This project has been created as part of the 42 warsaw hackathon by cbogale and dalamrew*
+
 # 42 Warsaw Campus Dashboard
 
-A single-purpose hallway TV dashboard for **42 Warsaw** — built to run unattended on a 55–65″ display and show what's happening on campus right now.
+A dashboard for a TV in the Social Space. It shows what's happening at 42 Warsaw
+right now and rotates through four screens on a loop, so there's always something
+new when you walk past.
 
-![Screenshots](docs/screenshots/.gitkeep)
+No login, no menu, nothing to click. It's a screen on a wall, not an app.
 
-> Add screenshots of `/dashboard` and `/dashboard/display` under `docs/screenshots/`.
+## What's on it
 
-## Purpose
+Four screens, 20 seconds each:
 
-Everything a passerby wants to glance at, rotating automatically:
+| Screen | Shows |
+|---|---|
+| **Campus stats** | Headline numbers, level distribution, what projects people are working on |
+| **Presence** | Who's here now, attendance forecast, longest session of the week, first person in today |
+| **Achievements** | The twenty most recent validated projects as a wall of faces — exam passes get fireworks |
+| **Coalitions** | Score history for the season and the top contributors |
 
-- Who is currently on campus, and who logged in first today?
-- Who recently passed a project, and which projects have the most people on them right now?
-- How are the coalitions competing?
+## Running it
 
-## Features
+You need 42 API credentials first — make an app at
+[Intra OAuth Applications](https://profile.intra.42.fr/oauth/applications). No
+redirect URI needed; this app never does the user login flow.
 
-- **Campus monitor** (`/dashboard`, `/dashboard/display`) rotating through four screens — Campus Stats, Presence, Achievements, Coalitions — with a scrolling ticker, fullscreen, and a 30-minute refresh
-- **Survives a 42 API outage**: the API is read by a background job, never by a page load, so the wall keeps showing the last good data (with its age in the header) when intra is down or rate-limiting
-- **Attendance forecast**: how many students to expect over the next three days, and the hour the campus fills up, fitted from ~60 days of the campus's own session history
-- No login, no accounts: every data source is fetched with the app's own 42 API credentials (`client_credentials`), so there is nothing to sign into
-- Secrets never reach the browser — and neither does any data fetching: the board is server-rendered HTML
-
-## Stack
-
-- Next.js 16 (App Router, server components)
-- React 19 + TypeScript
-- PostgreSQL 17 (Docker) via `pg`
-- Recharts (the three charts, client-side; everything else is server-rendered)
-- Zustand (screen rotation state only, persisted locally)
-- Tailwind CSS 4
-- Vitest
-
-No client-side data layer: the board is server-rendered and the browser only ever
-renders. The charts are the one client-side piece (recharts, so they resize to
-their panel) and they take their data as props — nothing in the browser fetches.
-
-## Architecture
-
-```text
-                  every 30 min                       on request
-42 API ───────────────────────────▶ Postgres ──────────────────────────▶ Server-rendered HTML ──▶ TV
-        (background ingest job)     (snapshots,     (two indexed queries,   (no fetching in the
-                                     sessions,       no 42 API call)         browser at all)
-                                     forecasts)
+```bash
+cp .env.example .env      # fill in FORTYTWO_CLIENT_ID and FORTYTWO_CLIENT_SECRET
+npm run docker:up         # builds the app image, starts it and Postgres
 ```
 
-Two background jobs run inside the web server (started by `src/instrumentation.ts`,
-guarded by a Postgres advisory lock so extra instances don't multiply API traffic):
+Open **http://localhost:27942/dashboard**.
 
-| Job | When | What it does |
-|-----|------|--------------|
-| `ingest` | every 30 min | Builds the whole dashboard payload from the 42 API and stores it. On failure nothing is written, so the previous snapshot stays on screen. Also syncs host sessions (60-day backfill on first run, ~3 days after that). |
-| `forecast` | once per campus-local day (first tick after midnight) | Recomputes the attendance outlook from the stored session history and stores it under today's date, so the numbers on the wall are fixed for the whole day. |
+The first boot backfills 60 days of session history, so give it a few minutes to
+fill in — `npm run docker:logs` shows the progress. After that it looks after
+itself: both containers restart on their own after a reboot, and the data
+refreshes every 30 minutes.
 
-There is no OAuth or session layer — the dashboard only ever needs the app's own client-credentials token, never a signed-in user's.
+For the TV, open `/dashboard/display` — same board without the controls — and hit
+fullscreen once.
 
-See [docs/42-api-data-map.md](docs/42-api-data-map.md) for feature → endpoint mapping and limitations.
+### Working on it locally
 
-## Setup
+```bash
+npm install
+npm run db:up             # Postgres only
+npm run dev               # http://localhost:3000
+```
 
-1. Create an application at [Intra OAuth Applications](https://profile.intra.42.fr/oauth/applications) — no redirect URI is needed, the dashboard never performs the user OAuth flow.
-2. `cp .env.example .env` and fill in the Client ID / Secret.
-3. `npm run db:up` — starts PostgreSQL in Docker (`docker-compose.yml`) on port **26542**. If you change `POSTGRES_PORT`, change the port in `DATABASE_URL` to match.
-4. `npm install && npm run dev`.
+Don't run `npm run dev` and `npm run docker:up` at the same time. Nothing breaks
+— that's what the advisory lock is for — but you'll have two schedulers logging
+into one database and it gets confusing.
 
-Or skip steps 3–4 and run the whole thing in Docker — see [Running everything in Docker](#running-everything-in-docker).
+Without a `DATABASE_URL` the app still runs, building its data per request. You
+just don't get the background jobs or the attendance forecast.
 
-The schema is applied automatically on boot, and the first ingest starts
-immediately: expect the board to be empty for a minute or two while the 60-day
-session backfill runs (~7,900 sessions, ~3 minutes), then to fill in on its own.
+## How it works
 
-Without `DATABASE_URL` the app still runs — it falls back to building the payload
-per request — but there are no jobs and no attendance forecast.
+Two paths that never meet. A background job talks to the 42 API every 30 minutes
+and saves a snapshot; the page reads that snapshot. Nothing on the request path
+ever calls 42.
 
-## Environment variables
+```text
+              every 30 min                     on request
+42 API ─────────────────────────▶ Postgres ────────────────────▶ server HTML ──▶ TV
+       (background ingest job)                (2 indexed queries,
+                                               no 42 API call)
+```
+
+That's the reason the board doesn't go blank when intra is down or rate-limiting.
+It keeps showing the last good data and the header says how old it is.
+
+The browser doesn't fetch anything either. Every number arrives as server-rendered
+markup. The only client-side code is the three charts, the rotation timer, the
+clock, and a timer that reloads the page when fresh data is due.
+
+Full write-up in [docs/architecture.md](docs/architecture.md).
+
+## Attendance forecast
+
+The "expected students" tiles and the peak hour aren't from the 42 API — no such
+endpoint exists. They're fitted from the campus's own past: 60 days of host
+sessions, which is 8–9 observations of each weekday.
+
+For any given day it takes that weekday's own history (Tuesday looks nothing like
+Sunday), weights recent weeks more heavily, and takes the **median** rather than
+the mean so one public holiday can't drag it. Then it scales by a trend factor —
+clamped to ±15% — so a piscine or a summer dip gets followed without overshooting.
+The low–high range under each number is the quartiles of the same samples.
+
+Backtested on 60 days of real Warsaw history: within **8.5% (MAPE), about 4–5
+students**, and often exact on weekdays. Much worse in the first weeks after a
+fresh install, when a weekday only has 3–4 samples.
+
+It can't know about public holidays, exam days or campus events — none of those
+are in any 42 endpoint, so a holiday Tuesday is forecast as an ordinary one.
+
+## Docs
+
+| Doc | What's in it |
+|---|---|
+| [Architecture](docs/architecture.md) | What it is, how to get it on a TV, stack choices, data flow diagram |
+| [API research](docs/api-research.md) | Endpoints, rate-limit strategy, data quirks, outage handling |
+| [42 API data map](docs/42-api-data-map.md) | Feature → endpoint mapping, field lists, and what was left out on purpose |
+
+## Two things worth knowing
+
+**Coalition history is reconstructed, not stored.** The API gives each coalition's
+current total plus an append-only ledger of score events, so the season is rebuilt
+by walking that ledger backwards. Scores are wiped between seasons and the resets
+*aren't* in the ledger — the Warsaw ledger sums to roughly twelve times the live
+score — so the chart starts at the last reset, found by walking back until the
+running total would cross zero. Nothing is invented; a coalition whose ledger
+can't be fetched is left off the chart rather than drawn flat.
+
+**Levels, not milestones.** The stats screen bands students by whole cursus level
+because the API has no milestone field anywhere, and level isn't a substitute:
+Warsaw has Cadets still in the common core at level 9 while Transcenders start
+around 14. "Past common core" comes from `grade`, which is authoritative. Making
+up a level→milestone table would put wrong numbers on a wall.
+
+## Config
 
 ```env
 FORTYTWO_CLIENT_ID=
 FORTYTWO_CLIENT_SECRET=
-FORTYTWO_API_BASE_URL=https://api.intra.42.fr
-FORTYTWO_CAMPUS_ID=
-FORTYTWO_CURSUS_ID=21
+FORTYTWO_CURSUS_ID=21              # 42cursus
+FORTYTWO_CAMPUS_ID=                # resolved automatically when empty
 
 DATABASE_URL=postgres://ft42:ft42@localhost:26542/ft42_dashboard
-POSTGRES_USER=ft42
-POSTGRES_PASSWORD=ft42
-POSTGRES_DB=ft42_dashboard
 POSTGRES_PORT=26542
 APP_PORT=27942
 
-CAMPUS_TIMEZONE=Europe/Warsaw
+CAMPUS_TIMEZONE=Europe/Warsaw      # every day/week boundary uses this
 ```
 
-The two host ports are deliberately unusual. 5432 is taken by any locally
-installed Postgres — on Windows that server answers first and rejects the login
-with `password authentication failed for user "ft42"`, which looks like a
-password problem but is a *wrong server* problem — and 3000 is taken by every
-other dev server on the machine.
+The odd ports are deliberate. 5432 is taken by any locally installed Postgres —
+and when that happens the error says `password authentication failed for user
+"ft42"`, which looks like a password problem but is really the wrong server
+answering. 3000 is taken by every other dev server on the machine.
 
-`DATABASE_URL` is the **host** connection string, used by `npm run dev` and
-`npm run build`. The containerised app ignores it: compose points it at
-`postgres:5432` on the internal network instead.
+`DATABASE_URL` is the **host** connection string, for `npm run dev`. The
+containerised app ignores it and uses the internal network instead.
 
-Never commit real credentials.
+Don't commit real credentials.
 
-## Attendance forecast
-
-The presence screen's three "estimated" tiles and the peak hour are fitted from
-`location_sessions` — ~60 days of the campus's own host sessions, which is 8–9
-observations of every weekday. For a given day the estimator takes that weekday's
-own history (Tuesday looks nothing like Sunday), weights it towards the recent
-weeks (0.8 per week back), takes the **median** rather than the mean so one public
-holiday can't drag it, and scales it by a within-weekday trend factor clamped to
-±15% so a piscine or a summer dip is followed without overshooting. The
-low–high hint under each number is the weighted quartiles of the same samples.
-
-Backtested against 60 days of real Warsaw history — forecasting each of the last
-21 days using only the days before it — the estimator lands within **8.5% (MAPE),
-about 4–5 students**, and is frequently exact on weekdays. Accuracy is much worse
-in the first weeks after a fresh install, when a weekday has only 3–4 samples.
-
-It cannot know about public holidays, exam days or campus events: none of those
-are in any 42 endpoint, so a holiday Tuesday is forecast as a normal Tuesday.
-
-## Installation
+## Commands
 
 ```bash
-npm install
-cp .env.example .env.local
-# fill in FORTYTWO_CLIENT_ID / FORTYTWO_CLIENT_SECRET
-```
-
-## Development
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) (redirects to `/dashboard`).
-
-## Build / production
-
-```bash
-npm run build
-npm start
-```
-
-For a wall display, open `/dashboard/display` in a dedicated browser profile and use Fullscreen (or OS kiosk mode).
-
-## Running everything in Docker
-
-One command builds the app image and starts both containers — Postgres, and the
-app that serves the board *and* runs the ingest/forecast jobs:
-
-```bash
-npm run docker:up      # build + start both, in the background
-```
-
-Then open [http://localhost:27942/dashboard](http://localhost:27942/dashboard)
-(kiosk: `/dashboard/display`). The first boot applies the schema and starts the
-60-day session backfill, so the board fills in over a few minutes.
-
-| Command | Does |
-|---------|------|
-| `npm run docker:up` | Build the image and start both containers (rerun it to redeploy after a code change) |
-| `npm run docker:logs` | Follow the app log — `[jobs] ingest ok`, forecast runs, 42 API errors |
-| `npm run docker:down` | Stop both containers. Images and data stay |
-| `npm run docker:clean` | Stop both and **delete the images**. Snapshots and session history survive in the volumes |
-| `npm run docker:nuke` | Also delete the volumes — the 60-day session history is gone and the next boot re-backfills it (~3 min) |
-| `npm run db:psql` | psql shell into the database |
-
-`.env` is read at container start, so credential or timezone changes need only a
-`npm run docker:up`, not a rebuild.
-
-The two workflows share one Postgres: `npm run db:up` starts *only* the database
-for `npm run dev` on the host, against the same `pgdata` volume the containerised
-app uses. Don't run `npm run dev` and `npm run docker:up` at once — two
-schedulers on one database is exactly what the advisory lock in
-`src/lib/jobs/scheduler.ts` is there to survive, but the ingest logs get confusing.
-
-## Dashboard display mode
-
-| Route | Behavior |
-|-------|----------|
-| `/dashboard` | Same monitor, with a manual refresh button |
-| `/dashboard/display` | Shell-less presentation mode for a dedicated kiosk browser |
-
-Both rotate through the same four screens (Campus Stats, Presence, Achievements, Coalitions) every 20 seconds. Rotation state is stored locally via Zustand persistence.
-
-## Fullscreen mode
-
-The Fullscreen control uses the browser Fullscreen API. If unavailable, it falls back to `/dashboard/display`.
-
-## Data refresh strategy
-
-- The ingest job pulls the 42 API every **30 minutes** and stores a snapshot
-- The board reloads itself just after the next ingest is due (`router.refresh()`, so the server re-renders and the browser swaps in new markup — it never fetches data itself)
-- A failed ingest changes nothing on screen: the previous snapshot is still what gets served
-- Header shows `Last updated HH:MM`, plus a warning when the newest snapshot is older than an hour or came back with soft-failed sections
-- Manual refresh outside display mode re-renders from the stored snapshot; it does **not** hit the 42 API
-
-## Coalition score history
-
-The coalition line chart is built from real 42 data: the API exposes each coalition's current total plus `/v2/coalitions/:id/scores`, an append-only ledger of individual score events, so the whole season is reconstructed by walking that ledger backwards from the current score.
-
-Coalition scores are wiped between seasons and those resets are *not* written to the ledger — the Warsaw ledger reaches back to 2024 and sums to roughly twelve times the live score. The chart therefore starts at the last reset, found by walking back until the running score would cross zero. No local history file is involved and no points are invented; if the ledger doesn't cover a coalition, that series is left off the chart rather than drawn flat.
-
-## Cursus levels, not milestones
-
-The Campus Stats screen bands students by whole cursus level rather than by common-core milestone. The intra API has no milestone field — neither `cursus_users` nor `/v2/projects` (which groups only by `difficulty`/`parent`) exposes one — and level can't stand in for it: Warsaw currently has Cadets still inside the common core as high as level 9, against Transcenders starting at 14. Inventing a level→milestone table would put wrong numbers on the wall, so the chart shows the measure the API actually publishes; "past common core" is taken from `grade` (Transcender/Alumni), which is authoritative.
-
-## Snapshots
-
-Coalition score *deltas* (shown in the ticker) are computed from JSON snapshots in `data/snapshots/` (gitignored), written at most every 30 minutes on successful dashboard refresh. This is intended for a long-running campus host; ephemeral serverless filesystems will not retain them across deploys. The history chart above does not depend on these.
-
-## API limitations
-
-- Default 42 rate limit: **2 req/s**, **1200 req/hour** — the dashboard is deliberately scoped to a handful of calls per refresh to stay well under this
-- Full campus-wide logtime leaderboards, rank distributions, and per-user evaluation stats are intentionally out of scope (too expensive per user, or not worth the extra API load for a hallway screen)
-- Historical XP charts are not fabricated
-
-## Scripts
-
-```bash
-npm run dev
-npm run build
+npm run dev            # dev server on :3000
+npm run build          # production build
+npm test               # vitest
 npm run lint
 npm run typecheck
-npm test
 
-npm run db:up        # Postgres only (for `npm run dev`)
-npm run docker:up    # everything, in containers
-npm run docker:clean # stop and delete the images
+npm run db:up          # Postgres only, for local dev
+npm run db:psql        # psql shell
+
+npm run docker:up      # build + start everything (rerun to redeploy)
+npm run docker:logs    # follow the app — ingest runs, API errors
+npm run docker:down    # stop, keep images and data
+npm run docker:clean   # stop and delete images (data survives)
+npm run docker:nuke    # ...and the volumes too — next boot re-backfills 60 days
 ```
 
-## License
+`.env` is read at container start, so credential changes just need
+`npm run docker:up` — no rebuild.
 
-Private hackathon project unless otherwise specified.
