@@ -10,7 +10,7 @@ No login, no menu, nothing to click. It's a screen on a wall, not an app.
 
 ## What's on it
 
-Four screens, 20 seconds each:
+Five screens, 20 seconds each:
 
 | Screen | Shows |
 |---|---|
@@ -18,6 +18,29 @@ Four screens, 20 seconds each:
 | **Presence** | Who's here now, attendance forecast, longest session of the week, first person in today |
 | **Achievements** | The twenty most recent validated projects as a wall of faces — exam passes get fireworks |
 | **Coalitions** | Score history for the season and the top contributors |
+| **This week** | Campus events, plus who's looking for a teammate and the QR code to join them |
+
+A sixth screen, **Notices**, appears only when bocal has uploaded a slide — with
+nothing to show it stays out of the rotation rather than putting a blank panel on
+the wall every cycle.
+
+### Find a teammate
+
+Bottom right of the "This week" screen is a QR code. Scan it, sign in with 42,
+and you get a list of your in-progress projects — tap one to put your name on the
+wall for it. Scan again later and the same list shows what you've added, so
+taking your name down is another single tap. Listings expire after 14 days on
+their own, because nobody ever comes back to tick "found someone".
+
+It lists **all** your in-progress projects rather than filtering to group ones:
+the API has no reliable flag for team size, and asking for help on a solo project
+is your own business.
+
+### Slides for bocal
+
+`/admin` takes a 42 login and checks the `staff?` flag — no shared password to
+pass around. Upload a poster and it becomes a screen in the rotation; hide or
+delete it and it's gone on the next refresh.
 
 ## Running it
 
@@ -133,7 +156,30 @@ POSTGRES_PORT=26542
 APP_PORT=27942
 
 CAMPUS_TIMEZONE=Europe/Warsaw      # every day/week boundary uses this
+
+APP_PUBLIC_URL=                    # needed for the QR code and admin login
+SESSION_SECRET=                    # optional; falls back to the 42 secret
 ```
+
+**`APP_PUBLIC_URL` is the one that needs thought.** It has to be the address a
+*phone* can open — `localhost` resolves to the phone itself, so the QR code would
+go nowhere. Use the host's LAN address (`http://10.x.x.x:27942`) or a campus
+hostname. Then register `<APP_PUBLIC_URL>/api/auth/callback` as a redirect URI on
+your intra application; it must match exactly, port included.
+
+Leave it unset and the board still works — the QR code and the admin login just
+stay switched off.
+
+### Day boundaries
+
+The campus day starts at **05:00**, not midnight. "First login today" at 02:00 is
+somebody finishing yesterday, not starting today, and a midnight boundary would
+crown them and reset an hour later. The Hall of Fame week runs **Monday 05:00 to
+Monday 05:00** for the same reason: the long sessions it exists to celebrate run
+past midnight, and a 00:00 boundary would cut Sunday night's marathon in half.
+
+The attendance forecast deliberately still counts calendar days — "how busy is
+Tuesday" means all of Tuesday.
 
 The odd ports are deliberate. 5432 is taken by any locally installed Postgres —
 and when that happens the error says `password authentication failed for user

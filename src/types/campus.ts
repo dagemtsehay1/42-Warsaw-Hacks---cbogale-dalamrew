@@ -122,13 +122,68 @@ export type DashboardView = {
   stale: boolean;
   source: "database" | "warming-up" | "live";
   forecast: DayForecast[];
+  /** Events between this Monday 05:00 and next. Empty without a database. */
+  events: CampusEvent[];
+  /** Students currently looking for a teammate. Empty without a database. */
+  teammates: TeammateRequest[];
+  /** Bocal's uploaded slides, active ones only, in rotation order. */
+  slides: Slide[];
+  /** Absolute URL the QR code points at, or null when APP_PUBLIC_URL is unset. */
+  teammateUrl: string | null;
 };
 
 export type DisplayScreenId =
   | "stats"
   | "presence"
   | "achievements"
-  | "coalitions";
+  | "coalitions"
+  | "events"
+  | "slides";
+
+/** One campus event from `/v2/campus/:id/events`. */
+export type CampusEvent = {
+  id: number;
+  name: string;
+  description: string | null;
+  kind: string | null;
+  location: string | null;
+  beginAt: string;
+  endAt: string | null;
+  maxPeople: number | null;
+  subscribers: number | null;
+};
+
+/** A student advertising that they want a teammate on a project. */
+export type TeammateRequest = {
+  id: number;
+  login: string;
+  displayName: string;
+  imageUrl?: string;
+  projectId: number;
+  projectName: string;
+  projectSlug: string;
+  createdAt: string;
+};
+
+/** One in-progress project a signed-in student can advertise. */
+export type TeammateProjectOption = {
+  projectId: number;
+  projectName: string;
+  projectSlug: string;
+  /** Whether they are already on the board for it. */
+  listed: boolean;
+};
+
+/** An image bocal uploaded to the rotation. */
+export type Slide = {
+  id: number;
+  title: string;
+  active: boolean;
+  sortOrder: number;
+  uploadedBy: string;
+  createdAt: string;
+  byteSize: number;
+};
 
 export type DashboardPayload = {
   campusId: number;
@@ -142,7 +197,7 @@ export type DashboardPayload = {
   activeProjects: ActiveProjectStat[];
   presence: PresenceStudent[];
   earliestLogin: PresenceStudent | null;
-  /** Start of the current week (Sunday, campus-local) the Hall of Fame covers. */
+  /** Start of the current week (Monday 05:00, campus-local) the Hall of Fame covers. */
   weekStart: string;
   /** Longest single host session that started since `weekStart`. */
   topSessionThisWeek: SessionRecord | null;

@@ -102,8 +102,9 @@ instances from doubling the API traffic if one ever gets started twice.
 
 ## 4. Architecture
 
-Two paths that never touch each other. The write path talks to 42; the read path
-talks to Postgres. That separation is the whole design.
+The write path talks to 42; the read path talks to Postgres. They never meet —
+that separation is the whole design. Two humans can also write, from their
+phones, and they go through Postgres like everything else.
 
 ```
    WRITE PATH (background, every 30 min)          READ PATH (on request)
@@ -118,6 +119,7 @@ talks to Postgres. That separation is the whole design.
    ┌──────────────────────────────┐
    │  ingest job                  │
    │  build payload → snapshot    │
+   │  + events, prune listings    │
    │  (nothing written on failure)│
    └────────┬─────────────────────┘
             │                                  ┌─────────────────┐
@@ -126,14 +128,24 @@ talks to Postgres. That separation is the whole design.
    │      Postgres          │                  └────────┬────────┘
    │                        │                           │ GET
    │  dashboard_snapshots   │◀──────────────────────────┤
-   │  location_sessions     │   2 indexed queries       │
+   │  location_sessions     │   5 indexed queries       │
    │  attendance_forecasts  │──────────────────────────▶│
-   │  job_runs              │   server-rendered HTML    │
-   └────────▲───────────────┘                  ┌────────▼────────┐
-            │                                  │ 4 screens       │
-            │ reads history                    │ rotate every    │
-   ┌────────┴─────────────┐                    │ 20s, no fetch   │
-   │  forecast job        │                    └─────────────────┘
+   │  campus_events         │   server-rendered HTML    │
+   │  teammate_requests     │                  ┌────────▼────────┐
+   │  slides                │                  │ 5–6 screens     │
+   │  job_runs              │                  │ rotate every    │
+   └────────▲──────▲────────┘                  │ 20s, no fetch   │
+            │      │                           └─────────────────┘
+            │      │ server actions
+            │      │ (42 login required)
+            │      │
+            │   ┌──┴──────────────────┐
+            │   │  phone / laptop     │
+            │   │  /teammate  /admin  │  ← QR code on the wall
+            │   └─────────────────────┘
+            │ reads history
+   ┌────────┴─────────────┐
+   │  forecast job        │
    │  once a day          │
    └──────────────────────┘
 
@@ -141,6 +153,27 @@ talks to Postgres. That separation is the whole design.
       scheduler ticks every 60s, asks the DB what's due,
       takes a Postgres advisory lock before running
 ```
+
+### The third path: people
+
+The teammate board and the admin page are the only places anything other than the
+ingest job writes. Both sit behind a 42 login:
+
+- **`/teammate`** — any student. The session says who you are; the form only says
+  *which project*, so no request shape can list or remove somebody else.
+- **`/admin`** — the `staff?` flag off `/v2/me`. No shared password to circulate,
+  and it tracks staffing changes on its own. Every server action re-checks it,
+  because hiding the UI is presentation and a server action is a public endpoint.
+
+The cookie is signed (HMAC), not encrypted — none of it is secret, your login and
+avatar are on the wall already; it only has to be unforgeable. There is no session
+table: a login costs one 42 API call and every request after it costs none.
+
+Student writes land in Postgres and the board picks them up on its next render,
+so a student can watch their own name appear from across the room. That is the
+one place the 30-minute cadence would have felt broken, which is why events,
+teammates and slides are read live alongside the snapshot rather than baked into
+it.
 
 ### What happens each cycle
 

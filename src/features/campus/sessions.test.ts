@@ -24,12 +24,32 @@ function location(
 }
 
 describe("weekStart", () => {
-  it("starts the week on Sunday", () => {
-    // Derived, not hardcoded: the boundary is campus-local, not UTC midnight.
-    expect(weekStart(NOW).toISOString()).toBe(
-      startOfWeek(NOW, { weekStartsOn: 0 }).toISOString(),
-    );
-    expect(weekStart(NOW).getDay()).toBe(0);
+  it("starts the week on Monday at 05:00 campus-local", () => {
+    const start = weekStart(NOW);
+    expect(start.getDay()).toBe(1);
+    expect(start.getHours()).toBe(5);
+    expect(start.getMinutes()).toBe(0);
+    // Derived, not hardcoded: the boundary is campus-local, not UTC.
+    const monday = startOfWeek(NOW, { weekStartsOn: 1 });
+    monday.setHours(5, 0, 0, 0);
+    expect(start.toISOString()).toBe(monday.toISOString());
+  });
+
+  it("is always in the past", () => {
+    expect(weekStart(NOW).getTime()).toBeLessThanOrEqual(NOW.getTime());
+  });
+
+  it("keeps Monday before 05:00 in the week that is ending", () => {
+    // Monday 03:00 campus-local — the small hours belong to the previous week.
+    const earlyMonday = startOfWeek(NOW, { weekStartsOn: 1 });
+    earlyMonday.setHours(3, 0, 0, 0);
+
+    const start = weekStart(earlyMonday);
+    expect(start.getDay()).toBe(1);
+    expect(start.getHours()).toBe(5);
+    expect(start.getTime()).toBeLessThan(earlyMonday.getTime());
+    // A full week earlier, not the same morning.
+    expect(earlyMonday.getTime() - start.getTime()).toBeGreaterThan(6 * 864e5);
   });
 });
 

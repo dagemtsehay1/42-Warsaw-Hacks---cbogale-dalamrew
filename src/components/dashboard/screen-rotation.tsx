@@ -11,6 +11,7 @@ export function ScreenRotation() {
     rotationEnabled,
     rotationIntervalMs,
     activeScreen,
+    availableScreens,
     nextScreen,
     prevScreen,
   } = useDisplayStore();
@@ -42,8 +43,10 @@ export function ScreenRotation() {
         <span className="text-sm uppercase tracking-[0.14em] text-[var(--foreground)]">
           {activeLabel}
         </span>
+        {/* One dot per screen actually in the rotation, so the count matches
+            what the arrows step through. */}
         <div className="flex items-center gap-1.5" aria-hidden>
-          {DISPLAY_SCREENS.map((screen) => (
+          {DISPLAY_SCREENS.filter((s) => availableScreens.includes(s.id)).map((screen) => (
             <span
               key={screen.id}
               className={cn(

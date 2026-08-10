@@ -6,6 +6,7 @@ import type {
   FortyTwoCoalition,
   FortyTwoCoalitionUser,
   FortyTwoCursusUser,
+  FortyTwoEvent,
   FortyTwoLocation,
   FortyTwoProjectsUser,
   FortyTwoScore,
@@ -210,6 +211,54 @@ export async function fetchCoalitionScoreEvents(
       },
     },
   );
+}
+
+/**
+ * One student's in-progress projects, for the teammate board's pick list.
+ *
+ * Read with the *app* token, not the student's: the login only establishes who
+ * they are, and this endpoint is public campus data anyway. That keeps the
+ * student's own access token out of every code path but the login itself.
+ *
+ * Not filtered to group projects — the API has no reliable flag for that (the
+ * nested `project` object carries no team size, and `/v2/projects/:slug` would
+ * be one extra call per project). Someone asking for help on a solo project is
+ * their own business.
+ */
+export async function fetchUserInProgressProjects(
+  userId: number,
+  cursusId = getDefaultCursusId(),
+) {
+  return fortyTwoFetchAllPages<FortyTwoProjectsUser>(
+    `/v2/users/${userId}/projects_users`,
+    {
+      pageSize: 100,
+      maxPages: 2,
+      searchParams: {
+        "filter[cursus]": cursusId,
+        "filter[status]": "in_progress",
+      },
+    },
+  );
+}
+
+/**
+ * Campus events. `range[begin_at]` bounds the window; the caller sorts, since
+ * order is not guaranteed on this endpoint any more than the others.
+ */
+export async function fetchCampusEvents(
+  campusId: number,
+  fromIso: string,
+  toIso: string,
+) {
+  return fortyTwoFetchAllPages<FortyTwoEvent>(`/v2/campus/${campusId}/events`, {
+    pageSize: 100,
+    maxPages: 2,
+    searchParams: {
+      "range[begin_at]": `${fromIso},${toIso}`,
+      sort: "begin_at",
+    },
+  });
 }
 
 export async function fetchUsersByIds(userIds: number[]) {

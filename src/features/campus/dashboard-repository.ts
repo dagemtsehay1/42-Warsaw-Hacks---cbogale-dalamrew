@@ -1,5 +1,9 @@
 import { campusToday } from "@/features/campus/campus-time";
+import { readWeekEvents } from "@/features/campus/events";
 import { getInitialDashboard } from "@/features/campus/initial-dashboard";
+import { listTeammateRequests } from "@/features/teammates/repository";
+import { listActiveSlides } from "@/features/slides/repository";
+import { resolveBaseUrl } from "@/lib/api/42/oauth";
 import {
   INGEST_INTERVAL_MS,
   REFRESH_GRACE_MS,
@@ -7,6 +11,16 @@ import {
 } from "@/lib/dashboard-config";
 import { hasDatabase, migrate, query } from "@/lib/db/pool";
 import type { DashboardPayload, DashboardView, DayForecast } from "@/types/campus";
+
+/**
+ * The address the QR code sends phones to. Derived from the request the board
+ * arrived on unless `APP_PUBLIC_URL` overrides it, so the code is there without
+ * any configuration on a normally-deployed board.
+ */
+async function teammateUrl(): Promise<string | null> {
+  const base = await resolveBaseUrl();
+  return base ? `${base}/teammate` : null;
+}
 
 /**
  * The read path. Pages and the API route both come through here, and none of it
@@ -39,6 +53,11 @@ export async function readDashboardView(): Promise<DashboardView> {
     stale: false,
     source: hasDatabase() ? "warming-up" : "live",
     forecast: [],
+    // All three live only in Postgres, so without it there is nothing to show.
+    events: [],
+    teammates: [],
+    slides: [],
+    teammateUrl: await teammateUrl(),
   };
 }
 
@@ -53,7 +72,16 @@ async function readFromDatabase(): Promise<DashboardView | null> {
   const snapshot = snapshots[0];
   if (!snapshot) return null;
 
-  const forecast = await readForecast();
+  // Four small indexed reads alongside the snapshot. They are separate rather
+  // than baked into the payload because all three change on their own schedule:
+  // a student adds themselves between ingests, and bocal expects an upload to
+  // appear without waiting half an hour for the next one.
+  const [forecast, events, teammates, slides] = await Promise.all([
+    readForecast(),
+    readWeekEvents(),
+    listTeammateRequests(),
+    listActiveSlides(),
+  ]);
   const capturedMs = new Date(snapshot.captured_at).getTime();
 
   return {
@@ -65,6 +93,10 @@ async function readFromDatabase(): Promise<DashboardView | null> {
     stale: Date.now() - capturedMs > STALE_AFTER_MS,
     source: "database",
     forecast,
+    events,
+    teammates,
+    slides,
+    teammateUrl: await teammateUrl(),
   };
 }
 

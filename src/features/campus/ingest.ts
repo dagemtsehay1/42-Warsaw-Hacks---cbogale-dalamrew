@@ -1,6 +1,8 @@
 import { buildDashboardPayload } from "@/features/campus/dashboard-service";
+import { syncCampusEvents } from "@/features/campus/events";
 import { syncSessionHistory } from "@/features/campus/session-history";
 import { mergeSnapshotWithPrevious } from "@/features/campus/snapshot-merge";
+import { pruneTeammateRequests } from "@/features/teammates/repository";
 import { query } from "@/lib/db/pool";
 import type { DashboardPayload } from "@/types/campus";
 
@@ -27,6 +29,8 @@ export async function runIngest(): Promise<{
   capturedAt: string;
   softErrors: string[];
   sessions: { fetched: number; backfill: boolean };
+  events: number;
+  prunedTeammates: number;
 }> {
   const fresh: DashboardPayload = await buildDashboardPayload();
 
@@ -64,10 +68,29 @@ export async function runIngest(): Promise<{
     payload.errors.push(`Session history: ${String(error)}`);
   }
 
+  // Same reasoning: events live in their own table and the board reads them
+  // directly, so a failed events fetch costs this week's event screen and
+  // nothing else.
+  let events = 0;
+  try {
+    events = await syncCampusEvents(payload.campusId);
+  } catch (error) {
+    payload.errors.push(`Events: ${String(error)}`);
+  }
+
+  let pruned = 0;
+  try {
+    pruned = await pruneTeammateRequests();
+  } catch (error) {
+    payload.errors.push(`Teammate cleanup: ${String(error)}`);
+  }
+
   return {
     campusId: payload.campusId,
     capturedAt: rows[0]?.captured_at ?? new Date().toISOString(),
     softErrors: payload.errors,
     sessions,
+    events,
+    prunedTeammates: pruned,
   };
 }

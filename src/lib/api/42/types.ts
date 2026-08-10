@@ -116,6 +116,25 @@ export type FortyTwoLocation = {
   user: FortyTwoUser;
 };
 
+/**
+ * A campus event. Only `id`, `name` and `begin_at` are relied on — every other
+ * field is treated as optional, because this endpoint's shape could not be
+ * verified against the live API and a missing `location` must not blank the
+ * screen.
+ */
+export type FortyTwoEvent = {
+  id: number;
+  name: string;
+  description?: string | null;
+  /** "conference", "meet_up", "workshop", "association"… Free-form in practice. */
+  kind?: string | null;
+  location?: string | null;
+  begin_at: string;
+  end_at?: string | null;
+  max_people?: number | null;
+  nbr_subscribers?: number | null;
+};
+
 export type FortyTwoTokenResponse = {
   access_token: string;
   token_type: string;

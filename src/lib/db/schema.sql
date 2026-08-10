@@ -57,3 +57,68 @@ CREATE TABLE IF NOT EXISTS attendance_forecasts (
   computed_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (computed_for, target_date)
 );
+
+-- "Looking for a teammate" entries, written by students themselves after a 42
+-- login (the QR code on the presence screen). This is the only table on the
+-- board that students write to.
+--
+-- The profile fields are copied in rather than joined at read time: the wall
+-- renders from a stored snapshot and must not depend on the 42 API being up to
+-- know what somebody looks like. Unique on (user, project) so tapping "add"
+-- twice is idempotent rather than a duplicate row.
+CREATE TABLE IF NOT EXISTS teammate_requests (
+  id           BIGSERIAL   PRIMARY KEY,
+  user_id      INTEGER     NOT NULL,
+  login        TEXT        NOT NULL,
+  display_name TEXT        NOT NULL,
+  image_url    TEXT,
+  project_id   INTEGER     NOT NULL,
+  project_name TEXT        NOT NULL,
+  project_slug TEXT        NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, project_id)
+);
+
+CREATE INDEX IF NOT EXISTS teammate_requests_created_idx
+  ON teammate_requests (created_at DESC);
+
+-- Campus events from /v2/campus/:id/events, refreshed by the ingest job.
+-- Stored rather than kept in the snapshot payload so the events screen can be
+-- queried by date range without unpacking JSON.
+CREATE TABLE IF NOT EXISTS campus_events (
+  id          BIGINT      PRIMARY KEY,
+  campus_id   INTEGER     NOT NULL,
+  name        TEXT        NOT NULL,
+  description TEXT,
+  kind        TEXT,
+  location    TEXT,
+  begin_at    TIMESTAMPTZ NOT NULL,
+  end_at      TIMESTAMPTZ,
+  max_people  INTEGER,
+  subscribers INTEGER,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS campus_events_begin_at_idx
+  ON campus_events (begin_at);
+
+-- Images bocal uploads to appear in the board rotation.
+--
+-- The bytes live in Postgres rather than on a volume so there is still exactly
+-- one thing to back up, and an upload survives `docker:clean` like every other
+-- piece of state. Slides are a handful of posters, not a media library — the
+-- route that accepts them caps the size.
+CREATE TABLE IF NOT EXISTS slides (
+  id           BIGSERIAL   PRIMARY KEY,
+  title        TEXT        NOT NULL,
+  content_type TEXT        NOT NULL,
+  bytes        BYTEA       NOT NULL,
+  byte_size    INTEGER     NOT NULL,
+  active       BOOLEAN     NOT NULL DEFAULT true,
+  sort_order   INTEGER     NOT NULL DEFAULT 0,
+  uploaded_by  TEXT        NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS slides_active_order_idx
+  ON slides (active, sort_order, created_at);

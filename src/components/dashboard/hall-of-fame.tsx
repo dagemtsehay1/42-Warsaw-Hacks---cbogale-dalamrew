@@ -53,10 +53,10 @@ export function HallOfFame({
         session
           ? live
             ? "Still logged in — the record is still growing"
-            : `Since Sunday ${formatShortDay(new Date(weekStart))}`
+            : `Since Monday ${formatShortDay(new Date(weekStart))}`
           : undefined
       }
-      emptyMessage="No host sessions recorded since Sunday."
+      emptyMessage="No host sessions recorded since Monday."
     />
   );
 }

@@ -15,6 +15,23 @@
 | `GET /v2/coalitions/:id/scores` | Append-only score ledger: `value`, `created_at` | Score history chart |
 | `GET /v2/coalitions/:id/coalitions_users` | `user_id`, `score`, `rank` — no user object | Top 5 per coalition |
 | `GET /v2/users?filter[id]=a,b,c` | Logins and avatars, comma-separated ids in one call | Names/faces for those top 5 |
+| `GET /v2/campus/:id/events` | Campus events in a `range[begin_at]` window: `name`, `kind`, `location`, `begin_at`, `end_at`, `nbr_subscribers` | "Events this week" screen |
+| `GET /v2/users/:id/projects_users?filter[status]=in_progress` | One student's open projects | The pick list after scanning the teammate QR code |
+| `GET /oauth/authorize` → `POST /oauth/token` → `GET /v2/me` | The *user* OAuth flow: profile, `staff?` | Teammate login, bocal admin gate |
+
+**The user OAuth flow is separate from everything above.** Every other call uses
+the app's own `client_credentials` token. The login flow exists only to answer
+"who is standing here" — the student's access token is used twice (exchange, then
+`/v2/me`) and thrown away. It is never stored, never put in a cookie, and never
+used to fetch anything shown on the wall.
+
+Two of these are **unverified against the live API**: the `.env` credentials in
+this repo return `invalid_client`, so `/v2/campus/:id/events` and
+`/v2/users/:id/projects_users` were built from documentation rather than from a
+response we've seen. The events mapper treats everything except `id`, `name` and
+`begin_at` as optional for that reason — a missing `location` must not blank the
+screen, and a row missing those three is dropped instead of stored half-formed.
+Worth re-checking both once the credentials work.
 
 ## 2. Rate limits and refresh
 
@@ -43,6 +60,16 @@ pattern for reworked cursus projects. We never merge them:
 
 The "what campus is building" chart groups by `project.id`, so two versions are
   two bars
+
+**There is no "group project" flag.** The `project` object nested in
+`projects_users` carries no team size, and resolving it properly would mean one
+`/v2/projects/:slug` call per distinct project to read `project_sessions[].solo`.
+So the teammate pick list shows every in-progress project unfiltered.
+
+**There is no milestone field either** — the same gap that stops the level donut
+showing milestones. So "offer Transcendence at milestone 5" isn't implementable
+as stated; Transcendence appears in the pick list when a student has it in
+progress, like any other project.
 
 ## 4. When the API is down
 

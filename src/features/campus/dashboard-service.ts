@@ -1,4 +1,5 @@
 import { pickDidYouKnow } from "@/data/campus-facts";
+import { campusDayStart } from "@/features/campus/campus-time";
 import { getDefaultCursusId, hasFortyTwoCredentials } from "@/lib/api/42/config";
 import {
   fetchActiveLocations,
@@ -165,7 +166,8 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
         ),
       }),
       fetchCampusBlocs(campusId, cursusId),
-      fetchEarliestLocationToday(campusId, startOfDay(new Date()).toISOString()),
+      // The campus day starts at 05:00, not midnight — see `campusDayStart`.
+      fetchEarliestLocationToday(campusId, campusDayStart().toISOString()),
     ]);
 
   const locations =
