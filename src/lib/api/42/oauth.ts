@@ -18,21 +18,39 @@ import type { SessionUser } from "@/lib/auth/session";
 /** Only `public` is needed — we read the profile and the student's own projects. */
 const SCOPE = "public";
 
+/** The origin of a URL string, or null if it isn't one. */
+function originOf(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Where 42 sends the student back, and what the QR code encodes.
+ * This app's public address — what the QR code encodes, where 42 sends students
+ * back, and where every redirect after a login points.
  *
- * `APP_PUBLIC_URL` wins when it is set. When it isn't, the address is taken
- * from the request the board itself arrived on — whatever the TV typed into its
- * browser is, by definition, an address that resolves on the campus network, so
- * it is the right thing to put in a QR code.
+ * The request's own origin is deliberately **not** the first choice. In Docker
+ * the server listens on 3000 behind a published 27942, and nothing rewrites the
+ * Host header, so `request.nextUrl.origin` is `http://localhost:3000` — an
+ * address that exists only inside the container. Bouncing a phone there is the
+ * whole "redirected me to :3000" symptom.
  *
- * The one case that needs the env var is a TV browsing to `localhost` (the
- * display device is also the host). A phone resolves `localhost` to itself, so
- * that is rejected below rather than encoded into a code that goes nowhere.
+ * Order: `APP_PUBLIC_URL`, then the origin of `FORTYTWO_REDIRECT_URI` (if that
+ * is set the deployment has already declared its public address), then the
+ * incoming request as a last resort for a plain `npm run dev`.
  */
 export async function resolveBaseUrl(): Promise<string | null> {
-  const configured = process.env.APP_PUBLIC_URL?.trim();
-  if (configured) return configured.replace(/\/$/, "");
+  // Only the origin is meaningful. Pasting a whole page address here is an easy
+  // mistake, and appending to it produces `…/teammate/api/auth/callback`, which
+  // 42 rejects with a message that says nothing about the cause.
+  const configured =
+    originOf(process.env.APP_PUBLIC_URL) ??
+    originOf(process.env.FORTYTWO_REDIRECT_URI);
+  if (configured) return configured;
 
   const headerList = await headers();
   const host = headerList.get("x-forwarded-host") || headerList.get("host");
@@ -46,19 +64,64 @@ export async function resolveBaseUrl(): Promise<string | null> {
   return `${proto}://${host}`;
 }
 
+/**
+ * An absolute URL on the public origin, for redirecting a browser to one of our
+ * own pages. Falls back to `fallbackOrigin` (the request's) only when nothing is
+ * configured, which is the dev-server case.
+ */
+export async function publicUrl(
+  path: string,
+  fallbackOrigin: string,
+): Promise<URL> {
+  const base = (await resolveBaseUrl()) ?? fallbackOrigin;
+  return new URL(path, base);
+}
+
 /** True when a login can be attempted at all. */
 export async function canSignIn(): Promise<boolean> {
   return (await resolveBaseUrl()) != null;
 }
 
+/** The path this app actually serves the OAuth callback on. */
+export const CALLBACK_PATH = "/api/auth/callback";
+
+/**
+ * The redirect URI sent to 42. It must match one registered on the intra
+ * application **character for character** — 42's rejection message ("The
+ * redirect uri included is not valid") names no detail, so every difference
+ * costs a round of guessing.
+ *
+ * `FORTYTWO_REDIRECT_URI` overrides everything and is used verbatim, for when
+ * the registered value is already fixed and re-registering is the slower path.
+ * It still has to point at `CALLBACK_PATH`, since that is the only callback
+ * route that exists.
+ *
+ * Otherwise it is the resolved origin plus that path, with any doubled slashes
+ * collapsed — `host:27942//api/...` and `host:27942/api/...` are different URIs
+ * to 42 and identical to a human reading them.
+ */
 export async function getRedirectUri(): Promise<string> {
+  const explicit = process.env.FORTYTWO_REDIRECT_URI?.trim();
+  if (explicit) return normalizeUri(explicit);
+
   const base = await resolveBaseUrl();
   if (!base) {
     throw new Error(
       "Cannot work out this app's public address. Set APP_PUBLIC_URL, e.g. http://10.11.12.13:27942",
     );
   }
-  return `${base}/api/auth/callback`;
+  return `${base}${CALLBACK_PATH}`;
+}
+
+/** Collapses `//` inside the path without touching the `https://` separator. */
+function normalizeUri(raw: string): string {
+  try {
+    const url = new URL(raw);
+    url.pathname = url.pathname.replace(/\/{2,}/g, "/");
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return raw;
+  }
 }
 
 /** The 42 consent screen to send the browser to. */

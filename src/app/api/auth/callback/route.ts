@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { completeLogin, parseState } from "@/lib/api/42/oauth";
+import { completeLogin, parseState, publicUrl } from "@/lib/api/42/oauth";
 import {
   encodeSession,
   OAUTH_STATE_COOKIE,
@@ -9,8 +9,12 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function failure(request: NextRequest, returnTo: string, reason: string) {
-  const url = new URL(returnTo, request.nextUrl.origin);
+async function failure(
+  request: NextRequest,
+  returnTo: string,
+  reason: string,
+) {
+  const url = await publicUrl(returnTo, request.nextUrl.origin);
   url.searchParams.set("error", reason);
   const response = NextResponse.redirect(url);
   response.cookies.delete(OAUTH_STATE_COOKIE);
@@ -23,21 +27,24 @@ export async function GET(request: NextRequest) {
 
   // The student pressed "decline" on the 42 consent screen.
   if (params.get("error")) {
-    return failure(request, returnTo, "declined");
+    return await failure(request, returnTo, "declined");
   }
 
   const expected = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
   if (!expected || !nonce || expected !== nonce) {
-    return failure(request, returnTo, "state");
+    return await failure(request, returnTo, "state");
   }
 
   const code = params.get("code");
-  if (!code) return failure(request, returnTo, "nocode");
+  if (!code) return await failure(request, returnTo, "nocode");
 
   try {
     const user = await completeLogin(code);
+    // The public origin, not the request's: 42 calls us back on the address the
+    // phone used, but behind Docker that arrives as the container's own
+    // localhost:3000 and would bounce the student somewhere unreachable.
     const response = NextResponse.redirect(
-      new URL(returnTo, request.nextUrl.origin),
+      await publicUrl(returnTo, request.nextUrl.origin),
     );
 
     response.cookies.set(SESSION_COOKIE, encodeSession(user), {
@@ -52,6 +59,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("[auth] login failed:", error);
-    return failure(request, returnTo, "failed");
+    return await failure(request, returnTo, "failed");
   }
 }

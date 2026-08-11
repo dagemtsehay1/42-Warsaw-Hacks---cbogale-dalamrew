@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { publicUrl } from "@/lib/api/42/oauth";
 import { SESSION_COOKIE } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,9 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   const returnTo = request.nextUrl.searchParams.get("returnTo") || "/teammate";
   const response = NextResponse.redirect(
-    new URL(returnTo, request.nextUrl.origin),
+    // Same reason as the callback: behind Docker the request's own origin is
+    // the container's localhost:3000.
+    await publicUrl(returnTo, request.nextUrl.origin),
   );
   response.cookies.delete(SESSION_COOKIE);
   return response;
