@@ -4,7 +4,7 @@ import { Eye, EyeOff, LogOut, Trash2 } from "lucide-react";
 import { removeSlide, toggleSlide } from "./actions";
 import { UploadForm } from "./upload-form";
 import { Button } from "@/components/ui/button";
-import { currentUser } from "@/lib/auth/current-user";
+import { currentUser, isDevMode } from "@/lib/auth/current-user";
 import { canSignIn } from "@/lib/api/42/oauth";
 import { hasDatabase, migrate } from "@/lib/db/pool";
 import { listAllSlides } from "@/features/slides/repository";
@@ -17,7 +17,9 @@ export const dynamic = "force-dynamic";
  * Bocal's page for putting posters into the board rotation.
  *
  * Access is the `staff?` flag off `/v2/me` — no separate password to share,
- * rotate or leak, and it tracks staffing changes on its own.
+ * rotate or leak, and it tracks staffing changes on its own. With
+ * `APP_MODE=development` that gate is relaxed to any signed-in 42 user, so
+ * the page can be exercised off-campus without a bocal account.
  */
 export default async function AdminPage() {
   const user = await currentUser();
@@ -43,7 +45,7 @@ export default async function AdminPage() {
     );
   }
 
-  if (!user.isStaff) {
+  if (!user.isStaff && !isDevMode()) {
     return (
       <Shell>
         <p className="text-sm text-[var(--warning)]">

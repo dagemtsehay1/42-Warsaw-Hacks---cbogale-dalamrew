@@ -28,6 +28,10 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0
+# Baked in, not left to .env: compose's `env_file: .env` can still override it
+# (e.g. `APP_MODE=development` for a local container), but the image itself
+# always defaults to the staff-only gate.
+ENV APP_MODE=production
 
 RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 --ingroup nodejs nextjs
