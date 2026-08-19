@@ -34,6 +34,12 @@ export type FortyTwoUser = {
   image: FortyTwoUserImage;
   /** Question mark included, as with `validated?` on projects_users. */
   "staff?"?: boolean;
+  /**
+   * Only present on `/v2/users/:id` (not on the nested `user` inside other
+   * resources) — every project this student has ever registered for, past
+   * and present, across every cursus and piscine they've been in.
+   */
+  projects_users?: FortyTwoProjectsUser[];
 };
 
 /** A student's enrolment in one cursus — the level/grade record. */
@@ -65,6 +71,9 @@ export type FortyTwoProjectsUser = {
     name: string;
     slug: string;
   };
+  /** Every cursus this registration counts under — a project shared between
+   *  42cursus and a piscine carries both ids here. */
+  cursus_ids?: number[];
   marked_at?: string | null;
   marked: boolean;
   created_at: string;

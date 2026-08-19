@@ -214,31 +214,34 @@ export async function fetchCoalitionScoreEvents(
 }
 
 /**
- * One student's in-progress projects, for the teammate board's pick list.
+ * One student's projects that are still searching for a group, for the
+ * teammate board's pick list.
+ *
+ * Reads `/v2/users/:id` rather than the `projects_users` collection: 42 nests
+ * every project the student has ever registered for right on the user
+ * resource, so one call gets everything and this just keeps the ones still
+ * `status: "searching_a_group"` — 42's own state for "registered for a group
+ * project, hasn't locked a team yet". A solo project never carries this
+ * status at all, so the filter does double duty as "is a group project" and
+ * "hasn't locked a team" with no per-project follow-up call. Once the team
+ * locks, the status moves on and the project drops off this list by itself.
  *
  * Read with the *app* token, not the student's: the login only establishes who
  * they are, and this endpoint is public campus data anyway. That keeps the
  * student's own access token out of every code path but the login itself.
- *
- * Not filtered to group projects — the API has no reliable flag for that (the
- * nested `project` object carries no team size, and `/v2/projects/:slug` would
- * be one extra call per project). Someone asking for help on a solo project is
- * their own business.
  */
-export async function fetchUserInProgressProjects(
+export async function fetchUserFormingTeamProjects(
   userId: number,
   cursusId = getDefaultCursusId(),
-) {
-  return fortyTwoFetchAllPages<FortyTwoProjectsUser>(
-    `/v2/users/${userId}/projects_users`,
-    {
-      pageSize: 100,
-      maxPages: 2,
-      searchParams: {
-        "filter[cursus]": cursusId,
-        "filter[status]": "in_progress",
-      },
-    },
+): Promise<FortyTwoProjectsUser[]> {
+  const user = await fortyTwoFetch<FortyTwoUser>(`/v2/users/${userId}`);
+  return (user.projects_users ?? []).filter(
+    (item) =>
+      item.status === "searching_a_group" &&
+      // Guards against a piscine's own group projects bleeding into the
+      // main cursus's teammate board; missing cursus_ids passes rather than
+      // hides, so a shape we haven't seen doesn't silently drop a project.
+      (item.cursus_ids?.includes(cursusId) ?? true),
   );
 }
 

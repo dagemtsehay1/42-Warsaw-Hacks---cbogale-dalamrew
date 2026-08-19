@@ -137,8 +137,9 @@ async function SignedIn({
         <p className="text-sm text-[var(--warning)]">{loadError}</p>
       ) : options.length === 0 ? (
         <p className="text-sm text-[var(--muted)]">
-          You have no projects in progress right now, so there is nothing to
-          list. Register for a project on intra and scan the code again.
+          You didn&apos;t register any group project — or every one you did is
+          already teamed up. Register for one on intra and come
+          again.
         </p>
       ) : (
         <>
