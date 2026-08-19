@@ -17,6 +17,7 @@ import { ScreenAvailability } from "@/components/dashboard/screen-availability";
 import { ScreenSwitcher } from "@/components/dashboard/screen-switcher";
 import { SlideShow } from "@/components/dashboard/slide-show";
 import { TeammateBoard } from "@/components/dashboard/teammate-board";
+import { TeammateLiveUpdates } from "@/components/dashboard/teammate-live-updates";
 import { TopContributors } from "@/components/dashboard/top-contributors";
 import { campusToday } from "@/features/campus/campus-time";
 import type { DashboardView } from "@/types/campus";
@@ -177,6 +178,7 @@ export function CampusBoard({
       </main>
 
       <AutoRefresh nextRefreshAt={view.nextRefreshAt} />
+      <TeammateLiveUpdates />
       <ScreenAvailability hasSlides={view.slides.length > 0} />
       <PartnerLogos />
     </div>
