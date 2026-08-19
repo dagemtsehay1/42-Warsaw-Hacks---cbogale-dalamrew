@@ -55,7 +55,7 @@ export function CampusBoard({
         <div className="min-w-0">
           <div className="flex items-baseline gap-3">
             <h1 className="text-xl font-semibold tracking-[0.08em] md:text-2xl">
-              42 WARSAW
+              <span className="text-[var(--accent)]">42</span> WARSAW
             </h1>
             <span className="hidden text-xs uppercase tracking-[0.2em] text-[var(--muted)] sm:inline">
               Campus
@@ -83,26 +83,31 @@ export function CampusBoard({
                 <>
                   <MetricGroup className="md:grid-cols-5">
                     <Metric
+                      tone="accent"
                       label="Students in cursus"
                       value={data.stats.studentsInCursus}
                       // hint={`${formatNumber(data.stats.campusMembers)} campus members`}
                     />
                     <Metric
+                      tone="blue"
                       label="Average level"
                       value={formatLevel(data.stats.averageLevel)}
                       hint={`top level ${formatLevel(data.stats.topLevel)}`}
                     />
                     <Metric
+                      tone="violet"
                       label="Past common core"
                       value={data.stats.pastCommonCore}
                       hint="transcenders & alumni"
                     />
                     <Metric
+                      tone="green"
                       label="Building now"
                       value={data.stats.studentsBuilding}
                       hint={`${formatNumber(data.stats.projectsInProgress)} projects in progress`}
                     />
                     <Metric
+                      tone="danger"
                       label="Blackhole in 7 days"
                       value={data.stats.blackholeWithin7Days}
                       hint="students at the wire"

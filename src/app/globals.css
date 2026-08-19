@@ -13,6 +13,13 @@
   --accent-foreground: #041516;
   --warning: #d4a017;
   --danger: #e35d6a;
+  /* Secondary hues for the stat tiles: each one a distinct signal in the same
+     row (level, graduation, activity), so the KPI strip reads at a glance
+     instead of as five identical white numbers. Contrast-checked ≥6:1 on
+     `--panel`, same band as the accent/warning/danger triad above. */
+  --accent-blue: #4d9fef;
+  --accent-violet: #9b86f0;
+  --accent-green: #4fc37f;
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-jetbrains);
 }
