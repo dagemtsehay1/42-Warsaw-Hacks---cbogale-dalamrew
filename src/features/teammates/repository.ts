@@ -55,6 +55,19 @@ export async function listTeammateRequests(): Promise<TeammateRequest[]> {
   return rows.map(toRequest);
 }
 
+/**
+ * Every unexpired listing, newest first — the admin moderation view. Unlike
+ * `listTeammateRequests` this has no `BOARD_LIMIT`, so bocal can see (and take
+ * down) an entry even once it has scrolled off the wall itself.
+ */
+export async function listAllTeammateRequests(): Promise<TeammateRequest[]> {
+  const rows = await query<Row>(
+    `${SELECT} ORDER BY created_at DESC`,
+    [String(TEAMMATE_TTL_DAYS)],
+  );
+  return rows.map(toRequest);
+}
+
 /** What one student has listed — the "remove" view after a second scan. */
 export async function listRequestsForUser(
   userId: number,
@@ -107,6 +120,16 @@ export async function removeTeammateRequest(
     "DELETE FROM teammate_requests WHERE user_id = $1 AND project_id = $2",
     [userId, projectId],
   );
+}
+
+/**
+ * Removes one listing by row id, no matter whose it is — for bocal taking
+ * down a post from the admin page (spam, a stale pairing, a request to
+ * remove it in person). The student-facing removal above stays scoped to
+ * `user_id` on purpose; this one is only reachable through `currentStaff()`.
+ */
+export async function deleteTeammateRequestById(id: number): Promise<void> {
+  await query("DELETE FROM teammate_requests WHERE id = $1", [id]);
 }
 
 /** Housekeeping for the ingest job. */

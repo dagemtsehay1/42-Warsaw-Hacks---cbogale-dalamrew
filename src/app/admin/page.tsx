@@ -1,13 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Eye, EyeOff, LogOut, Trash2 } from "lucide-react";
-import { removeSlide, toggleSlide } from "./actions";
+import { removeSlide, removeTeammatePost, toggleSlide } from "./actions";
+import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { UploadForm } from "./upload-form";
 import { Button } from "@/components/ui/button";
+import { StudentAvatar } from "@/components/ui/student-avatar";
 import { currentUser, isDevMode } from "@/lib/auth/current-user";
 import { canSignIn } from "@/lib/api/42/oauth";
 import { hasDatabase, migrate } from "@/lib/db/pool";
 import { listAllSlides } from "@/features/slides/repository";
+import { listAllTeammateRequests } from "@/features/teammates/repository";
 import { formatLongDate } from "@/lib/utils/format";
 
 export const metadata = { title: "Slides · 42 Warsaw" };
@@ -73,7 +76,10 @@ export default async function AdminPage() {
   }
 
   await migrate();
-  const slides = await listAllSlides();
+  const [slides, teammatePosts] = await Promise.all([
+    listAllSlides(),
+    listAllTeammateRequests(),
+  ]);
 
   return (
     <Shell login={user.login}>
@@ -139,11 +145,66 @@ export default async function AdminPage() {
 
                   <form action={removeSlide}>
                     <input type="hidden" name="id" value={slide.id} />
-                    <Button variant="ghost" size="sm" aria-label="Delete slide">
+                    <ConfirmDeleteButton
+                      variant="ghost"
+                      size="sm"
+                      type="submit"
+                      aria-label="Delete slide"
+                      confirmMessage={`Delete "${slide.title}"? This can't be undone.`}
+                    >
                       <Trash2 className="h-4 w-4 text-[var(--warning)]" />
-                    </Button>
+                    </ConfirmDeleteButton>
                   </form>
                 </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm uppercase tracking-[0.16em] text-[var(--muted)]">
+          Looking for a teammate ({teammatePosts.length})
+        </h2>
+
+        {teammatePosts.length === 0 ? (
+          <p className="text-sm text-[var(--muted)]">
+            Nobody is currently listed on the teammate board.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {teammatePosts.map((post) => (
+              <li
+                key={post.id}
+                className="flex items-center gap-3 border border-[var(--border)] bg-[var(--panel)] p-2.5"
+              >
+                <StudentAvatar
+                  src={post.imageUrl}
+                  alt={post.login}
+                  size={36}
+                  className="rounded-full"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium">
+                    {post.login}
+                  </div>
+                  <div className="truncate text-xs text-[var(--muted)]">
+                    {post.projectName} · {formatLongDate(new Date(post.createdAt))}
+                  </div>
+                </div>
+
+                <form action={removeTeammatePost}>
+                  <input type="hidden" name="id" value={post.id} />
+                  <ConfirmDeleteButton
+                    variant="ghost"
+                    size="sm"
+                    type="submit"
+                    aria-label={`Remove ${post.login}'s post`}
+                    confirmMessage={`Remove ${post.login}'s "${post.projectName}" post?`}
+                  >
+                    <Trash2 className="h-4 w-4 text-[var(--warning)]" />
+                  </ConfirmDeleteButton>
+                </form>
               </li>
             ))}
           </ul>

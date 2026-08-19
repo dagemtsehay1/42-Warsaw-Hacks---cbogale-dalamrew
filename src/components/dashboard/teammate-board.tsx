@@ -40,20 +40,21 @@ export function TeammateBoard({
               Scan the code to be the first.
             </div>
           ) : (
-            <ul className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+            <ul className="grid grid-cols-2 gap-1.5 xl:grid-cols-3">
               {requests.map((request) => (
                 <li
                   key={request.id}
-                  className="flex items-center gap-3 border border-[var(--border)] bg-[var(--panel-elevated)] p-2.5"
+                  className="flex items-center gap-2 border border-[var(--border)] bg-[var(--panel-elevated)] p-1.5"
                 >
                   <StudentAvatar
                     src={request.imageUrl}
-                    alt={request.displayName}
-                    size={44}
+                    alt={request.login}
+                    size={32}
+                    className="rounded-full"
                   />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-[var(--foreground)]">
-                      {request.displayName}
+                      {request.login}
                     </div>
                     <div className="truncate font-mono text-xs text-[var(--accent)]">
                       {request.projectName}

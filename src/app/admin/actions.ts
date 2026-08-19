@@ -11,6 +11,7 @@ import {
   deleteSlide,
   setSlideActive,
 } from "@/features/slides/repository";
+import { deleteTeammateRequestById } from "@/features/teammates/repository";
 
 /**
  * Every action re-checks `currentStaff()` server-side. Hiding the admin UI from
@@ -74,6 +75,17 @@ export async function removeSlide(formData: FormData) {
   if (!Number.isInteger(id)) return;
 
   await deleteSlide(id);
+  revalidatePath("/admin");
+  revalidatePath("/dashboard");
+}
+
+export async function removeTeammatePost(formData: FormData) {
+  if (!(await currentStaff())) return;
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return;
+
+  await deleteTeammateRequestById(id);
   revalidatePath("/admin");
   revalidatePath("/dashboard");
 }
