@@ -46,7 +46,7 @@ export function RecentPasses({ items }: { items: ProjectPass[] }) {
 
 function PassCard({ pass, index }: { pass: ProjectPass; index: number }) {
   return (
-    <li className="flex min-w-0 flex-col items-center text-center">
+    <li className="flex w-full min-w-0 flex-col items-center text-center">
       <div className="relative flex items-center justify-center">
         {/* Fireworks go behind the portrait, and only for an exam. */}
         {pass.isExam && <Fireworks index={index} />}
