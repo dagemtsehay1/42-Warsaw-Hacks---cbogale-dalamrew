@@ -12,6 +12,25 @@ import {
   setSlideActive,
 } from "@/features/slides/repository";
 import { deleteTeammateRequestById } from "@/features/teammates/repository";
+import { isThemeId } from "@/features/themes/constants";
+import { saveTheme } from "@/features/themes/repository";
+
+export async function updateTheme(
+  _previous: { error?: string; ok?: boolean },
+  formData: FormData,
+): Promise<{ error?: string; ok?: boolean }> {
+  if (!(await currentStaff())) return { error: "Not authorised." };
+  const theme = formData.get("theme");
+  if (!isThemeId(theme)) return { error: "Choose a valid theme." };
+  try {
+    await saveTheme(theme);
+  } catch (error) {
+    console.error("[theme] Unable to save theme:", error);
+    return { error: "Could not save the theme. Please try again." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
 
 /**
  * Every action re-checks `currentStaff()` server-side. Hiding the admin UI from

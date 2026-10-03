@@ -1,5 +1,15 @@
 -- Applied on every server boot; every statement must be idempotent.
 
+-- One shared theme for every dashboard display. Never reset an existing choice.
+CREATE TABLE IF NOT EXISTS dashboard_theme (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  theme TEXT NOT NULL DEFAULT 'default'
+    CHECK (theme IN ('default', 'sunset', 'emerald', 'ocean-violet')),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+INSERT INTO dashboard_theme (id, theme) VALUES (1, 'default')
+ON CONFLICT (id) DO NOTHING;
+
 -- One row per successful ingest. The dashboard is always read from the newest
 -- row, so a failed 42 API call simply leaves the previous row in place and the
 -- board keeps showing the last good data instead of an error.

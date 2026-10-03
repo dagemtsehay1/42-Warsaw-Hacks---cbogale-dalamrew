@@ -22,8 +22,9 @@ export const LEVEL_RAMP = [
 ] as const;
 
 /** Single-series bars: one hue, no rank-coloring. Contrast 6.15:1 on `--panel`. */
-export const SERIES_ACCENT = "#00a7a9";
+export const SERIES_ACCENT = "var(--series-accent, #00a7a9)";
 
 export function levelRampColor(index: number): string {
-  return LEVEL_RAMP[Math.min(Math.max(index, 0), LEVEL_RAMP.length - 1)];
+  const step = Math.min(Math.max(index, 0), LEVEL_RAMP.length - 1);
+  return `var(--level-${step}, ${LEVEL_RAMP[step]})`;
 }

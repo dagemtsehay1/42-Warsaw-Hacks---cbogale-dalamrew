@@ -4,6 +4,8 @@ import { Eye, EyeOff, LogOut, Trash2 } from "lucide-react";
 import { removeSlide, removeTeammatePost, toggleSlide } from "./actions";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { UploadForm } from "./upload-form";
+import { ThemeSelector } from "./theme-selector";
+import { readTheme } from "@/features/themes/repository";
 import { Button } from "@/components/ui/button";
 import { StudentAvatar } from "@/components/ui/student-avatar";
 import { currentUser, isDevMode } from "@/lib/auth/current-user";
@@ -76,13 +78,15 @@ export default async function AdminPage() {
   }
 
   await migrate();
-  const [slides, teammatePosts] = await Promise.all([
+  const [slides, teammatePosts, theme] = await Promise.all([
     listAllSlides(),
     listAllTeammateRequests(),
+    readTheme(),
   ]);
 
   return (
     <Shell login={user.login}>
+      <ThemeSelector selected={theme} />
       <UploadForm />
 
       <section className="flex flex-col gap-3">

@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { readTheme } from "@/features/themes/repository";
+
+export const dynamic = "force-dynamic";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -21,14 +24,16 @@ export const metadata: Metadata = {
     "Live campus information display for 42 Warsaw — achievements, projects, coalitions, and presence.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const theme = await readTheme();
   return (
     <html
       lang="en"
+      data-theme={theme}
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans">

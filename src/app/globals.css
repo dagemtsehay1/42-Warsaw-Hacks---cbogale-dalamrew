@@ -13,8 +13,96 @@
   --accent-foreground: #041516;
   --warning: #d4a017;
   --danger: #e35d6a;
+  --grid: rgba(0, 186, 188, 0.03);
+  --firework-glow: rgba(212, 160, 23, 0.38);
+  --firework-halo: rgba(212, 160, 23, 0.12);
+  --exam-shadow: rgba(212, 160, 23, 0.45);
   --font-sans: var(--font-space-grotesk);
   --font-mono: var(--font-jetbrains);
+}
+
+/* Color-only overrides: Default continues to use the original root palette. */
+:root[data-theme="sunset"] {
+  --background: #141114;
+  --foreground: #fff5f3;
+  --muted: #c9b8bd;
+  --panel: #1e181d;
+  --panel-elevated: #282027;
+  --panel-hover: #332830;
+  --border: #51404a;
+  --accent: #fb7185;
+  --accent-dim: rgba(251, 113, 133, 0.18);
+  --accent-foreground: #210d14;
+  --warning: #FCD34D;
+  --danger: #fda4af;
+  --grid: rgba(251, 113, 133, 0.02);
+  --series-accent: #fbbf24;
+  --level-0: #bc425f;
+  --level-1: #d65370;
+  --level-2: #ea6681;
+  --level-3: #fb7f96;
+  --level-4: #ff9daf;
+  --level-5: #ffbac6;
+  --level-6: #ffd3db;
+  --level-7: #ffe8ed;
+}
+
+:root[data-theme="emerald"] {
+  --background: #0e1513;
+  --foreground: #effbf5;
+  --muted: #b0c7bb;
+  --panel: #161f1c;
+  --panel-elevated: #1d2a24;
+  --panel-hover: #27362f;
+  --border: #3d5649;
+  --accent: #34d399;
+  --accent-dim: rgba(52, 211, 153, 0.16);
+  --accent-foreground: #071b12;
+  --warning: #FCD34D;
+  --danger: #fb7185;
+  --grid: rgba(52, 211, 153, 0.02);
+  --series-accent: #2dd4bf;
+  --level-0: #168663;
+  --level-1: #1b9f76;
+  --level-2: #24b98a;
+  --level-3: #34d399;
+  --level-4: #64dfb1;
+  --level-5: #91eaca;
+  --level-6: #baf3dd;
+  --level-7: #dffbed;
+}
+
+:root[data-theme="ocean-violet"] {
+  --background: #10121b;
+  --foreground: #f5f4ff;
+  --muted: #bfc0d6;
+  --panel: #191d2c;
+  --panel-elevated: #23273a;
+  --panel-hover: #2d3146;
+  --border: #474e6b;
+  --accent: #b49afa;
+  --accent-dim: rgba(180, 154, 250, 0.18);
+  --accent-foreground: #171027;
+  --warning: #FCD34D;
+  --danger: #fb7185;
+  --grid: rgba(180, 154, 250, 0.02);
+  --series-accent: #5bbcf5;
+  --level-0: #7360b4;
+  --level-1: #8970c8;
+  --level-2: #9e84dd;
+  --level-3: #b49afa;
+  --level-4: #c4b0ff;
+  --level-5: #d4c5ff;
+  --level-6: #e3daff;
+  --level-7: #f1ebff;
+}
+
+:root[data-theme="sunset"],
+:root[data-theme="emerald"],
+:root[data-theme="ocean-violet"] {
+  --firework-glow: rgba(252, 211, 77, 0.38);
+  --firework-halo: rgba(252, 211, 77, 0.12);
+  --exam-shadow: rgba(252, 211, 77, 0.45);
 }
 
 @theme inline {
@@ -43,8 +131,8 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), "Segoe UI", sans-serif;
   background-image:
-    linear-gradient(rgba(0, 186, 188, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 186, 188, 0.03) 1px, transparent 1px);
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
   background-size: 48px 48px;
   background-position: center top;
 }
@@ -91,8 +179,8 @@ a {
   border-radius: 9999px;
   background: radial-gradient(
     circle,
-    rgba(212, 160, 23, 0.38) 0%,
-    rgba(212, 160, 23, 0.12) 45%,
+    var(--firework-glow) 0%,
+    var(--firework-halo) 45%,
     transparent 70%
   );
   animation: firework-glow 2.6s ease-in-out infinite;

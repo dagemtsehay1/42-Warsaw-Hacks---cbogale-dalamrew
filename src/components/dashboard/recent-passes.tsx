@@ -60,7 +60,7 @@ function PassCard({ pass, index }: { pass: ProjectPass; index: number }) {
           className={cn(
             "relative z-10 rounded-full ring-2",
             pass.isExam
-              ? "ring-[var(--warning)] shadow-[0_0_24px_rgba(212,160,23,0.45)]"
+              ? "ring-[var(--warning)] shadow-[0_0_24px_var(--exam-shadow)]"
               : "ring-[var(--accent)]",
           )}
         />
