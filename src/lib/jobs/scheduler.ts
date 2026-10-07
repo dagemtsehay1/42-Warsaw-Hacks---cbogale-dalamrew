@@ -1,6 +1,7 @@
 import { campusToday } from "@/features/campus/campus-time";
 import { hasForecastFor, runForecastJob } from "@/features/campus/forecast-job";
 import { runIngest } from "@/features/campus/ingest";
+import { runProjectCatalogJob } from "@/features/milestones/catalog-job";
 import { hasFortyTwoCredentials } from "@/lib/api/42/config";
 import { INGEST_INTERVAL_MS } from "@/lib/dashboard-config";
 import { hasDatabase, migrate, query, withClient } from "@/lib/db/pool";
@@ -15,9 +16,26 @@ const TICK_MS = 60_000;
  */
 const LOCK_ID = 4242_0001;
 
-type JobName = "ingest" | "forecast";
+type JobName = "ingest" | "forecast" | "project-catalog";
 
 let started = false;
+let ticking = false;
+
+async function projectCatalogIsDue(): Promise<boolean> {
+  const [row] = await query<{ due: boolean }>(
+    `SELECT (NOT EXISTS (
+       SELECT 1 FROM job_runs WHERE job = 'project-catalog' AND status = 'success'
+         AND finished_at > now() - interval '7 days'
+     ) OR EXISTS (
+       SELECT 1 FROM project_catalog WHERE available = true AND payload IS NULL
+     )) AND NOT EXISTS (
+       SELECT 1 FROM job_runs WHERE job = 'project-catalog'
+         AND status IN ('running', 'failed')
+         AND started_at > now() - interval '1 hour'
+     ) AS due`,
+  );
+  return row?.due ?? true;
+}
 
 async function recordRun(
   job: JobName,
@@ -61,11 +79,12 @@ async function ingestIsDue(): Promise<boolean> {
 /**
  * One pass of the schedule:
  *
+ * - **project-catalog** on first boot, then every seven days; failures retry hourly;
  * - **ingest** every 30 minutes — pull the 42 API and snapshot it;
  * - **forecast** once per campus-local day — the first tick after midnight
  *   computes the day's numbers, and nothing recomputes them until tomorrow.
  *
- * Both are driven off what the database says already happened rather than off
+ * Jobs are driven off what the database says already happened rather than off
  * timers held in memory, so a restart resumes the schedule instead of resetting
  * it, and a missed midnight is caught on the next tick.
  */
@@ -78,6 +97,9 @@ export async function runDueJobs(): Promise<void> {
     if (!locked.rows[0]?.locked) return;
 
     try {
+      if (await projectCatalogIsDue()) {
+        await recordRun("project-catalog", runProjectCatalogJob);
+      }
       if (await ingestIsDue()) {
         await recordRun("ingest", runIngest);
       }
@@ -108,11 +130,16 @@ export function startScheduler(): void {
   started = true;
 
   const tick = async () => {
+    // Session advisory locks are reentrant; also prevent overlapping local ticks.
+    if (ticking) return;
+    ticking = true;
     try {
       await migrate();
       await runDueJobs();
     } catch (error) {
       console.error("[jobs] tick failed:", error);
+    } finally {
+      ticking = false;
     }
   };
 

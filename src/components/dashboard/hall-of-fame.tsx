@@ -1,7 +1,7 @@
 "use client";
 
 import { Trophy } from "lucide-react";
-import { useSyncExternalStore } from "react";
+import { useClock } from "@/lib/hooks/use-clock";
 import { FeaturedStudent } from "@/components/dashboard/featured-student";
 import type { SessionRecord } from "@/types/campus";
 import {
@@ -12,13 +12,6 @@ import {
 
 // An unfinished session has to keep counting between the 30-minute data
 // refreshes, otherwise the board would show a duration frozen at the last fetch.
-function subscribeMinute(onStoreChange: () => void) {
-  const id = window.setInterval(onStoreChange, 60_000);
-  return () => window.clearInterval(id);
-}
-const getNow = () => Date.now();
-const getServerNow = () => 0;
-
 export function HallOfFame({
   session,
   weekStart,
@@ -27,7 +20,7 @@ export function HallOfFame({
   weekStart: string;
 }) {
   // 0 only on the server; the client gets a real timestamp on its first render.
-  const now = useSyncExternalStore(subscribeMinute, getNow, getServerNow);
+  const now = useClock(60_000);
 
   // A session that is still running is only as long as `durationMs` said at
   // fetch time, so it is re-measured on the client; a finished one is final.

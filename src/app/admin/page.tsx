@@ -5,6 +5,9 @@ import { removeSlide, removeTeammatePost, toggleSlide } from "./actions";
 import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { UploadForm } from "./upload-form";
 import { ThemeSelector } from "./theme-selector";
+import { AdminCard } from "./admin-card";
+import { MilestoneSettings } from "./milestone-settings";
+import { readMilestoneSettings, readProjectCatalog } from "@/features/milestones/repository";
 import { readTheme } from "@/features/themes/repository";
 import { Button } from "@/components/ui/button";
 import { StudentAvatar } from "@/components/ui/student-avatar";
@@ -15,11 +18,11 @@ import { listAllSlides } from "@/features/slides/repository";
 import { listAllTeammateRequests } from "@/features/teammates/repository";
 import { formatLongDate } from "@/lib/utils/format";
 
-export const metadata = { title: "Slides · 42 Warsaw" };
+export const metadata = { title: "Administration · 42 Warsaw" };
 export const dynamic = "force-dynamic";
 
 /**
- * Bocal's page for putting posters into the board rotation.
+ * Bocal's page for configuring the dashboard and managing board content.
  *
  * Access is the `staff?` flag off `/v2/me` — no separate password to share,
  * rotate or leak, and it tracks staffing changes on its own. With
@@ -33,7 +36,7 @@ export default async function AdminPage() {
     return (
       <Shell>
         <p className="text-sm text-[var(--muted)]">
-          Sign in with a 42 staff account to manage the board&apos;s slides.
+          Sign in with a 42 staff account to manage the dashboard.
         </p>
         {(await canSignIn()) ? (
           <Link href="/api/auth/login?returnTo=/admin">
@@ -71,23 +74,31 @@ export default async function AdminPage() {
     return (
       <Shell>
         <p className="text-sm text-[var(--warning)]">
-          Slides need a database and this server has none configured.
+          Administration needs a database and this server has none configured.
         </p>
       </Shell>
     );
   }
 
   await migrate();
-  const [slides, teammatePosts, theme] = await Promise.all([
+  const [slides, teammatePosts, theme, milestones, catalog] = await Promise.all([
     listAllSlides(),
     listAllTeammateRequests(),
     readTheme(),
+    readMilestoneSettings(),
+    readProjectCatalog(),
   ]);
 
   return (
     <Shell login={user.login}>
-      <ThemeSelector selected={theme} />
-      <UploadForm />
+      <AdminCard title="Common core paths" description={`${milestones.paths.length} paths · Configure milestones and project choices`} defaultOpen>
+        <MilestoneSettings initial={milestones} projects={catalog.projects} syncedAt={catalog.syncedAt} />
+      </AdminCard>
+      <AdminCard title="Appearance" description="Choose the shared dashboard theme">
+        <ThemeSelector selected={theme} />
+      </AdminCard>
+      <AdminCard title="Slides & notices" description={`${slides.length} slides · Upload, show, hide, or remove posters`}>
+        <UploadForm />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-sm uppercase tracking-[0.16em] text-[var(--muted)]">
@@ -165,7 +176,8 @@ export default async function AdminPage() {
           </ul>
         )}
       </section>
-
+      </AdminCard>
+      <AdminCard title="Teammate board" description={`${teammatePosts.length} posts · Review and remove teammate requests`}>
       <section className="flex flex-col gap-3">
         <h2 className="text-sm uppercase tracking-[0.16em] text-[var(--muted)]">
           Looking for a teammate ({teammatePosts.length})
@@ -214,6 +226,7 @@ export default async function AdminPage() {
           </ul>
         )}
       </section>
+      </AdminCard>
     </Shell>
   );
 }
@@ -226,12 +239,12 @@ function Shell({
   login?: string;
 }) {
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-3xl flex-col gap-6 px-5 py-8">
+    <main className="mx-auto flex min-h-dvh w-full max-w-4xl flex-col gap-5 px-5 py-8">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Board slides</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Board administration</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Images here become extra screens in the Social Space rotation.
+            Manage the dashboard theme, common core milestones, and board content.
           </p>
         </div>
         {login && (

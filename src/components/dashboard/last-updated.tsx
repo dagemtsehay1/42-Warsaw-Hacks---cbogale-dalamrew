@@ -1,21 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useClock } from "@/lib/hooks/use-clock";
 import { formatClock, formatRelativeTime } from "@/lib/utils/format";
 import { cn } from "@/lib/utils/cn";
-
-function subscribeClock(onStoreChange: () => void) {
-  const id = window.setInterval(onStoreChange, 30_000);
-  return () => window.clearInterval(id);
-}
-
-function getNow() {
-  return Date.now();
-}
-
-function getServerNow() {
-  return 0;
-}
 
 export function LastUpdated({
   fetchedAt,
@@ -27,7 +14,7 @@ export function LastUpdated({
   isError?: boolean;
   className?: string;
 }) {
-  const now = useSyncExternalStore(subscribeClock, getNow, getServerNow);
+  const now = useClock(30_000);
 
   if (!fetchedAt) {
     return (
