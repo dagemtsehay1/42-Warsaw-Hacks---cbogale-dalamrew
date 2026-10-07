@@ -6,7 +6,7 @@ import { EventsBoard } from "@/components/dashboard/events-board";
 import { ForecastMetrics } from "@/components/dashboard/forecast-metrics";
 import { FullscreenToggle } from "@/components/dashboard/fullscreen-toggle";
 import { LastUpdated } from "@/components/dashboard/last-updated";
-import { LevelDistributionChart } from "@/components/dashboard/level-distribution-chart";
+import { MilestoneDistributionChart } from "@/components/dashboard/milestone-distribution-chart";
 import { Metric, MetricGroup } from "@/components/dashboard/metric";
 import { PartnerLogos } from "@/components/dashboard/partner-logos";
 import { PresenceBoard } from "@/components/dashboard/presence-board";
@@ -110,7 +110,7 @@ export function CampusBoard({
                     />
                   </MetricGroup>
                   <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2">
-                    <LevelDistributionChart bands={data.levelDistribution} />
+                    <MilestoneDistributionChart bands={view.milestoneDistribution} />
                     <ActiveProjectsChart projects={data.activeProjects} />
                   </div>
                 </>

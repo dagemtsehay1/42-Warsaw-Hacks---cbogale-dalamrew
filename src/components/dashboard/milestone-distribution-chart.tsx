@@ -1,11 +1,11 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import type { LevelBandStat } from "@/types/campus";
+import type { MilestoneStat } from "@/types/campus";
 import { levelRampColor } from "@/lib/charts/palette";
 import { formatNumber, formatPercent } from "@/lib/utils/format";
 
-export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
+export function MilestoneDistributionChart({ bands }: { bands: MilestoneStat[] }) {
   const total = bands.reduce((sum, band) => sum + band.studentCount, 0);
 
   if (total === 0) {
@@ -15,7 +15,7 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
           <Heading />
         </header>
         <div className="flex flex-1 items-center justify-center text-sm text-[var(--muted)]">
-          Cursus levels unavailable right now.
+          Milestone data unavailable right now.
         </div>
       </section>
     );
@@ -23,7 +23,7 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
 
   // Empty bands are dropped from the wedge data (a zero-value slice draws a
   // hairline artifact at its start angle) but stay in the legend, which is where
-  // "nobody is at level 6 yet" is a readable fact rather than a rendering glitch.
+  // "nobody is at milestone 6 yet" is a readable fact rather than a rendering glitch.
   const plotted = bands.filter((band) => band.studentCount > 0);
 
   return (
@@ -51,7 +51,7 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
                 isAnimationActive={false}
               >
                 {plotted.map((band) => (
-                  <Cell key={band.id} fill={levelRampColor(band.level)} />
+                  <Cell key={band.id} fill={levelRampColor(band.milestone)} />
                 ))}
               </Pie>
               <Tooltip
@@ -86,7 +86,7 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
             <li key={band.id} className="flex items-center gap-2.5 text-sm">
               <span
                 className="h-3 w-3 shrink-0"
-                style={{ backgroundColor: levelRampColor(band.level) }}
+                style={{ backgroundColor: levelRampColor(band.milestone) }}
                 aria-hidden
               />
               <span className="w-24 text-[var(--muted)]">{band.label}</span>
@@ -111,7 +111,7 @@ function Heading() {
         Common Core Progress
       </h2>
       <p className="text-xs text-[var(--muted)]">
-        Students by cursus level
+        Students by milestone
       </p>
     </>
   );

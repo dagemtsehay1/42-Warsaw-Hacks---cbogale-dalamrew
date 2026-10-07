@@ -1,6 +1,7 @@
 import { campusToday } from "@/features/campus/campus-time";
 import { readWeekEvents } from "@/features/campus/events";
 import { getInitialDashboard } from "@/features/campus/initial-dashboard";
+import { readMilestoneDistribution } from "@/features/campus/milestones";
 import { listTeammateRequests } from "@/features/teammates/repository";
 import { listActiveSlides } from "@/features/slides/repository";
 import { resolveBaseUrl } from "@/lib/api/42/oauth";
@@ -53,6 +54,7 @@ export async function readDashboardView(): Promise<DashboardView> {
     stale: false,
     source: hasDatabase() ? "warming-up" : "live",
     forecast: [],
+    milestoneDistribution: await readMilestoneDistribution(),
     // All three live only in Postgres, so without it there is nothing to show.
     events: [],
     teammates: [],
@@ -76,11 +78,12 @@ async function readFromDatabase(): Promise<DashboardView | null> {
   // than baked into the payload because all three change on their own schedule:
   // a student adds themselves between ingests, and bocal expects an upload to
   // appear without waiting half an hour for the next one.
-  const [forecast, events, teammates, slides] = await Promise.all([
+  const [forecast, events, teammates, slides, milestoneDistribution] = await Promise.all([
     readForecast(),
     readWeekEvents(),
     listTeammateRequests(),
     listActiveSlides(),
+    readMilestoneDistribution(),
   ]);
   const capturedMs = new Date(snapshot.captured_at).getTime();
 
@@ -93,6 +96,7 @@ async function readFromDatabase(): Promise<DashboardView | null> {
     stale: Date.now() - capturedMs > STALE_AFTER_MS,
     source: "database",
     forecast,
+    milestoneDistribution,
     events,
     teammates,
     slides,

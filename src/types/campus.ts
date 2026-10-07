@@ -79,6 +79,13 @@ export type LevelBandStat = {
   studentCount: number;
 };
 
+export type MilestoneStat = {
+  id: string;
+  label: string;
+  milestone: number;
+  studentCount: number;
+};
+
 /** Campus-wide numbers that aren't tied to today's activity. */
 export type CampusStats = {
   /** Students currently enrolled in the cursus (not finished, not blackholed). */
@@ -122,6 +129,8 @@ export type DashboardView = {
   stale: boolean;
   source: "database" | "warming-up" | "live";
   forecast: DayForecast[];
+  /** Pace milestones 0–6, with each student counted at their highest milestone. */
+  milestoneDistribution: MilestoneStat[];
   /** Events between this Monday 05:00 and next. Empty without a database. */
   events: CampusEvent[];
   /** Students currently looking for a teammate. Empty without a database. */

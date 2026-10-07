@@ -1,7 +1,9 @@
 import { campusToday } from "@/features/campus/campus-time";
 import { hasForecastFor, runForecastJob } from "@/features/campus/forecast-job";
 import { runIngest } from "@/features/campus/ingest";
+import { milestonesAreDue, runMilestoneSync } from "@/features/campus/milestones";
 import { hasFortyTwoCredentials } from "@/lib/api/42/config";
+import { hasPaceCredentials } from "@/lib/api/pace/client";
 import { INGEST_INTERVAL_MS } from "@/lib/dashboard-config";
 import { hasDatabase, migrate, query, withClient } from "@/lib/db/pool";
 
@@ -15,7 +17,7 @@ const TICK_MS = 60_000;
  */
 const LOCK_ID = 4242_0001;
 
-type JobName = "ingest" | "forecast";
+type JobName = "ingest" | "forecast" | "milestones";
 
 let started = false;
 
@@ -64,6 +66,7 @@ async function ingestIsDue(): Promise<boolean> {
  * - **ingest** every 30 minutes — pull the 42 API and snapshot it;
  * - **forecast** once per campus-local day — the first tick after midnight
  *   computes the day's numbers, and nothing recomputes them until tomorrow.
+ * - **milestones** on first boot and once per campus-local day after midnight.
  *
  * Both are driven off what the database says already happened rather than off
  * timers held in memory, so a restart resumes the schedule instead of resetting
@@ -78,6 +81,10 @@ export async function runDueJobs(): Promise<void> {
     if (!locked.rows[0]?.locked) return;
 
     try {
+      if (hasPaceCredentials() && await milestonesAreDue()) {
+        await recordRun("milestones", () => runMilestoneSync());
+      }
+      if (!hasFortyTwoCredentials()) return;
       if (await ingestIsDue()) {
         await recordRun("ingest", runIngest);
       }
@@ -101,9 +108,12 @@ export function startScheduler(): void {
     console.warn("[jobs] DATABASE_URL is not set — scheduler disabled");
     return;
   }
-  if (!hasFortyTwoCredentials()) {
-    console.warn("[jobs] 42 API credentials missing — scheduler disabled");
+  if (!hasFortyTwoCredentials() && !hasPaceCredentials()) {
+    console.warn("[jobs] 42 and Pace API credentials missing — scheduler disabled");
     return;
+  }
+  if (!hasPaceCredentials()) {
+    console.warn("[jobs] Pace API credentials missing — milestone sync disabled");
   }
   started = true;
 

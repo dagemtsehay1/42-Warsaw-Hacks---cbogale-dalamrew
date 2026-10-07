@@ -14,7 +14,7 @@ Five screens, 20 seconds each:
 
 | Screen | Shows |
 |---|---|
-| **Campus stats** | Headline numbers, level distribution, what projects people are working on |
+| **Campus stats** | Headline numbers, milestone distribution, what projects people are working on |
 | **Presence** | Who's here now, attendance forecast, longest session of the week, first person in today |
 | **Achievements** | The twenty most recent validated projects as a wall of faces — exam passes get fireworks |
 | **Coalitions** | Score history for the season and the top contributors |
@@ -137,11 +137,20 @@ score — so the chart starts at the last reset, found by walking back until the
 running total would cross zero. Nothing is invented; a coalition whose ledger
 can't be fetched is left off the chart rather than drawn flat.
 
-**Levels, not milestones.** The stats screen bands students by whole cursus level
-because the API has no milestone field anywhere, and level isn't a substitute:
-Warsaw has Cadets still in the common core at level 9 while Transcenders start
-around 14. "Past common core" comes from `grade`, which is authoritative. Making
-up a level→milestone table would put wrong numbers on a wall.
+**Milestones from Pace.** The stats chart counts each `user_id` once at their
+highest Pace milestone (0–6), including milestones not yet validated. The app
+fetches every page of `/milestones` on first boot and on the first scheduler tick
+after midnight in `CAMPUS_TIMEZONE` (normally within a minute, or after an active
+job finishes). A restart skips today's completed sync; a missed day catches up
+on startup. Failed syncs retry on subsequent ticks and preserve the last complete
+snapshot. All raw records are stored in `student_milestones`; counts are computed
+from that table. The other campus statistics keep their existing sources.
+
+Set `OIDC_OP_URL`, `OIDC_RP_CLIENT_ID`, `OIDC_RP_CLIENT_SECRET`, `USER_LOGIN`, and
+`USER_PASSWORD` in `.env` using the staff-42 Keycloak credentials. `OIDC_OP_URL`
+is the Keycloak base URL, without `/realms/staff-42`. `PACE_URL` defaults to
+`https://pace-system.42.fr/api/v1`. Postgres is required for milestone syncing;
+without these settings the chart shows that milestone data is unavailable.
 
 ## Config
 

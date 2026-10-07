@@ -1,5 +1,24 @@
 -- Applied on every server boot; every statement must be idempotent.
 
+-- Complete Pace /milestones snapshot, replaced atomically after all pages arrive.
+CREATE TABLE IF NOT EXISTS student_milestones (
+  id BIGINT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  level INTEGER NOT NULL CHECK (level >= 0),
+  deadline DATE,
+  validated_at DATE,
+  payload JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS student_milestones_user_level_idx
+  ON student_milestones (user_id, level DESC);
+
+-- Also records a successful empty snapshot, so it is not fetched again that day.
+CREATE TABLE IF NOT EXISTS milestone_sync (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  synced_for DATE NOT NULL,
+  synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- One shared theme for every dashboard display. Never reset an existing choice.
 CREATE TABLE IF NOT EXISTS dashboard_theme (
   id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
