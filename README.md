@@ -1,250 +1,252 @@
-*This project has been created as part of the 42 warsaw hackathon by cbogale and dalamrew*
-
 # 42 Warsaw Campus Dashboard
 
-A dashboard for a TV in the Social Space. It shows what's happening at 42 Warsaw
-right now and rotates through four screens on a loop, so there's always something
-new when you walk past.
+A rotating campus display with student milestones, presence, achievements,
+coalition scores, events, teammate requests, and notices.
 
-No login, no menu, nothing to click. It's a screen on a wall, not an app.
+Created for the 42 Warsaw hackathon by **cbogale** and **dalamrew**.
 
-## What's on it
+## Deploy with Docker
 
-Five screens, 20 seconds each:
+### 1. Prepare the project
 
-| Screen | Shows |
-|---|---|
-| **Campus stats** | Headline numbers, milestone distribution, what projects people are working on |
-| **Presence** | Who's here now, attendance forecast, longest session of the week, first person in today |
-| **Achievements** | The twenty most recent validated projects as a wall of faces — exam passes get fireworks |
-| **Coalitions** | Score history for the season and the top contributors |
-| **This week** | Campus events, plus who's looking for a teammate and the QR code to join them |
+Install Docker with Docker Compose, start Docker, and open a terminal in this
+project's folder. Docker runs both the app and PostgreSQL; no local Node.js
+installation is needed for this deployment.
 
-A sixth screen, **Notices**, appears only when bocal has uploaded a slide — with
-nothing to show it stays out of the rotation rather than putting a blank panel on
-the wall every cycle.
+Copy `.env.example` to `.env` if you do not already have one.
 
-### Find a teammate
+**Windows PowerShell:**
 
-Bottom right of the "This week" screen is a QR code. Scan it, sign in with 42,
-and you get a list of your in-progress projects — tap one to put your name on the
-wall for it. Scan again later and the same list shows what you've added, so
-taking your name down is another single tap. Listings expire after 14 days on
-their own, because nobody ever comes back to tick "found someone".
+```powershell
+Copy-Item .env.example .env
+```
 
-It lists **all** your in-progress projects rather than filtering to group ones:
-the API has no reliable flag for team size, and asking for help on a solo project
-is your own business.
-
-### Slides for bocal
-
-`/admin` takes a 42 login and checks the `staff?` flag — no shared password to
-pass around. Upload a poster and it becomes a screen in the rotation; hide or
-delete it and it's gone on the next refresh.
-
-The admin page groups appearance, slides, and teammate moderation into
-collapsible sections.
-
-## Running it
-
-You need 42 API credentials first — make an app at
-[Intra OAuth Applications](https://profile.intra.42.fr/oauth/applications). No
-redirect URI needed; this app never does the user login flow.
+**macOS / Linux:**
 
 ```bash
-cp .env.example .env      # fill in FORTYTWO_CLIENT_ID and FORTYTWO_CLIENT_SECRET
-npm run docker:up         # builds the app image, starts it and Postgres
+cp .env.example .env
 ```
 
-Open **http://localhost:27942/dashboard**.
+### 2. Configure credentials and the app address
 
-The first boot backfills 60 days of session history, so give it a few minutes to
-fill in — `npm run docker:logs` shows the progress. After that it looks after
-itself: both containers restart on their own after a reboot, and the data
-refreshes every 30 minutes.
+Edit `.env`:
 
-For the TV, open `/dashboard/display` — same board without the controls — and hit
-fullscreen once.
+1. Create an application at [42 Intra OAuth Applications](https://profile.intra.42.fr/oauth/applications)
+   and fill in `FORTYTWO_CLIENT_ID` and `FORTYTWO_CLIENT_SECRET`.
+2. Set `APP_PUBLIC_URL` to the address campus computers and phones will use,
+   for example `http://192.168.1.50:27942`. Replace the example IP with your server's
+   LAN IP or hostname. Use this same address when opening the admin page.
+3. Register that address followed by `/api/auth/callback` as a redirect URI in
+   the 42 application. For the example above, enter
+   `http://192.168.1.50:27942/api/auth/callback`. The scheme, host, port, and path
+   must match. Leave `FORTYTWO_REDIRECT_URI` blank for the normal setup.
+4. Fill in the five Pace settings: `OIDC_OP_URL`, `OIDC_RP_CLIENT_ID`,
+   `OIDC_RP_CLIENT_SECRET`, `USER_LOGIN`, and `USER_PASSWORD`. Obtain these from
+   your staff/Keycloak administrator for the intended campus. They are separate
+   from the Intra credentials. The app uses the `staff-42` realm.
+5. Choose a PostgreSQL password in `POSTGRES_PASSWORD` before the first start.
+   Keep `APP_MODE=production` for staff-only admin access. The remaining defaults
+   work for the standard deployment.
 
-### Working on it locally
+Keep `.env` private. All variables are explained in the tables below.
+
+### 3. Start the app
 
 ```bash
-npm install
-npm run db:up             # Postgres only
-npm run dev               # http://localhost:3000
+docker compose up -d --build
 ```
 
-Don't run `npm run dev` and `npm run docker:up` at the same time. Nothing breaks
-— that's what the advisory lock is for — but you'll have two schedulers logging
-into one database and it gets confusing.
+If Node.js and npm are installed, you can also run `npm run docker:up` from
+the project folder. It runs the same Docker command.
 
-Without a `DATABASE_URL` the app still runs, building its data per request. You
-just don't get the background jobs or the attendance forecast.
+The app creates its database tables automatically. The first sync can take a few
+minutes while it loads campus data, milestone pages, and session history.
 
-## How it works
-
-Two paths that never meet. A background job talks to the 42 API every 30 minutes
-and saves a snapshot; the page reads that snapshot. Nothing on the request path
-ever calls 42.
-
-```text
-              every 30 min                     on request
-42 API ─────────────────────────▶ Postgres ────────────────────▶ server HTML ──▶ TV
-       (background ingest job)                (2 indexed queries,
-                                               no 42 API call)
-```
-
-That's the reason the board doesn't go blank when intra is down or rate-limiting.
-It keeps showing the last good data and the header says how old it is.
-
-The browser doesn't fetch anything either. Every number arrives as server-rendered
-markup. The only client-side code is the three charts, the rotation timer, the
-clock, and a timer that reloads the page when fresh data is due.
-
-Full write-up in [docs/architecture.md](docs/architecture.md).
-
-## Attendance forecast
-
-The "expected students" tiles and the peak hour aren't from the 42 API — no such
-endpoint exists. They're fitted from the campus's own past: 60 days of host
-sessions, which is 8–9 observations of each weekday.
-
-For any given day it takes that weekday's own history (Tuesday looks nothing like
-Sunday), weights recent weeks more heavily, and takes the **median** rather than
-the mean so one public holiday can't drag it. Then it scales by a trend factor —
-clamped to ±15% — so a piscine or a summer dip gets followed without overshooting.
-The low–high range under each number is the quartiles of the same samples.
-
-Backtested on 60 days of real Warsaw history: within **8.5% (MAPE), about 4–5
-students**, and often exact on weekdays. Much worse in the first weeks after a
-fresh install, when a weekday only has 3–4 samples.
-
-It can't know about public holidays, exam days or campus events — none of those
-are in any 42 endpoint, so a holiday Tuesday is forecast as an ordinary one.
-
-## Docs
-
-| Doc | What's in it |
-|---|---|
-| [Architecture](docs/architecture.md) | What it is, how to get it on a TV, stack choices, data flow diagram |
-| [API research](docs/api-research.md) | Endpoints, rate-limit strategy, data quirks, outage handling |
-| [42 API data map](docs/42-api-data-map.md) | Feature → endpoint mapping, field lists, and what was left out on purpose |
-
-## Two things worth knowing
-
-**Coalition history is reconstructed, not stored.** The API gives each coalition's
-current total plus an append-only ledger of score events, so the season is rebuilt
-by walking that ledger backwards. Scores are wiped between seasons and the resets
-*aren't* in the ledger — the Warsaw ledger sums to roughly twelve times the live
-score — so the chart starts at the last reset, found by walking back until the
-running total would cross zero. Nothing is invented; a coalition whose ledger
-can't be fetched is left off the chart rather than drawn flat.
-
-**Milestones come from Pace.** Configure `OIDC_OP_URL`, `OIDC_RP_CLIENT_ID`,
-`OIDC_RP_CLIENT_SECRET`, `USER_LOGIN` and `USER_PASSWORD` in `.env`. The server
-uses the `staff-42` Keycloak password grant and fetches every page of
-`${PACE_URL}/milestones` (default base: `https://pace-system.42.fr/api/v1`).
-These are separate credentials from the Intra OAuth application.
-
-The first scheduler tick syncs missing data. Subsequent syncs run at the first
-tick after **midnight in `CAMPUS_TIMEZONE`** (normally within one minute); a
-restart catches up missed days without repeating a successful daily sync.
-Failed syncs retry on the next tick and keep the previous data.
-
-All raw records are stored in `pace_milestones`. After all pages arrive, SQL
-selects the highest record `id` per `user_id` as their latest milestone,
-including unvalidated records, and saves the totals in `milestone_counts`.
-The response has no creation timestamp, so record ID is the ordering assumption.
-Both tables and the daily sync marker update in one transaction. Counts include
-every user in the configured Pace feed once, without Intra enrolment filters;
-configure credentials for the intended campus. A successful empty feed clears
-previous data. Partial, inconsistent or failed responses leave it untouched.
-
-The existing chart and average/top metric read these stored milestone counts
-on every dashboard request. Other campus stats still come from Intra, including
-"Past common core" from `grade`. Without Pace data the milestone chart is empty.
-The existing payload keys (`levelDistribution`, `averageLevel`, `topLevel`) are
-retained for compatibility; dashboard reads replace their legacy level values.
-
-## Config
-
-```env
-FORTYTWO_CLIENT_ID=
-FORTYTWO_CLIENT_SECRET=
-FORTYTWO_CURSUS_ID=21              # 42cursus
-FORTYTWO_CAMPUS_ID=                # resolved automatically when empty
-
-OIDC_OP_URL=                     # Keycloak base URL, without /realms/...
-OIDC_RP_CLIENT_ID=
-OIDC_RP_CLIENT_SECRET=
-USER_LOGIN=
-USER_PASSWORD=
-PACE_URL=https://pace-system.42.fr/api/v1
-
-DATABASE_URL=postgres://ft42:ft42@localhost:26542/ft42_dashboard
-POSTGRES_PORT=26542
-APP_PORT=27942
-
-CAMPUS_TIMEZONE=Europe/Warsaw      # every day/week boundary uses this
-
-APP_PUBLIC_URL=                    # needed for the QR code and admin login
-SESSION_SECRET=                    # optional; falls back to the 42 secret
-```
-
-**`APP_PUBLIC_URL` is the one that needs thought.** It has to be the address a
-*phone* can open — `localhost` resolves to the phone itself, so the QR code would
-go nowhere. Use the host's LAN address (`http://10.x.x.x:27942`) or a campus
-hostname. Then register `<APP_PUBLIC_URL>/api/auth/callback` as a redirect URI on
-your intra application; it must match exactly, port included.
-
-Leave it unset and the board still works — the QR code and the admin login just
-stay switched off.
-
-### Day boundaries
-
-The campus day starts at **05:00**, not midnight. "First login today" at 02:00 is
-somebody finishing yesterday, not starting today, and a midnight boundary would
-crown them and reset an hour later. The Hall of Fame week runs **Monday 05:00 to
-Monday 05:00** for the same reason: the long sessions it exists to celebrate run
-past midnight, and a 00:00 boundary would cut Sunday night's marathon in half.
-
-The attendance forecast deliberately still counts calendar days — "how busy is
-Tuesday" means all of Tuesday.
-
-The odd ports are deliberate. 5432 is taken by any locally installed Postgres —
-and when that happens the error says `password authentication failed for user
-"ft42"`, which looks like a password problem but is really the wrong server
-answering. 3000 is taken by every other dev server on the machine.
-
-`DATABASE_URL` is the **host** connection string, for `npm run dev`. The
-containerised app ignores it and uses the internal network instead.
-
-Don't commit real credentials.
-
-The optional Postgres milestone integration tests use
-`MILESTONES_TEST_DATABASE_URL` and connection-local temporary tables. Set it to
-a reachable Postgres connection string before running `npm test`; without it,
-only those integration tests are skipped.
-
-## Commands
+Check the containers and follow the app logs:
 
 ```bash
-npm run dev            # dev server on :3000
-npm run build          # production build
-npm test               # vitest
-npm run lint
+docker compose ps
+docker compose logs -f app
+```
+
+Press `Ctrl+C` to stop following logs; the app continues running.
+
+### 4. Open the dashboard
+
+Open `http://localhost:27942/dashboard` on the server, or use `APP_PUBLIC_URL`
+from another device. Campus devices must be able to reach the server on
+`APP_PORT` (default `27942`).
+
+For the TV, open `/dashboard/display` and use the browser's fullscreen mode.
+To manage content, open `/admin` and sign in with a 42 staff account.
+
+## Available URLs
+
+Append these paths to `APP_PUBLIC_URL`. The links below use the default local
+Docker address; local development uses port `3000`.
+
+| URL | Purpose | Access |
+| --- | --- | --- |
+| [/](http://localhost:27942/) | Redirects to the dashboard. | Public |
+| [/dashboard](http://localhost:27942/dashboard) | Dashboard with screen and display controls. | Public |
+| [/dashboard/display](http://localhost:27942/dashboard/display) | TV display with controls hidden. | Public |
+| [/admin](http://localhost:27942/admin) | Manage theme, slides, and teammate posts. | 42 staff login |
+| [/teammate](http://localhost:27942/teammate) | Add or remove your own project teammate requests. | 42 login |
+| [/api/campus/dashboard](http://localhost:27942/api/campus/dashboard) | Dashboard data as JSON. | Public |
+| `/api/auth/callback` | OAuth return URL to register in the 42 application; used automatically during login. | Login flow |
+
+## Admin controls
+
+| Section | What you can do |
+| --- | --- |
+| Appearance | Choose the shared theme: Default, Sunset, Emerald, or Ocean Violet. |
+| Slides & notices | Upload an image with an optional title, preview slides, show or hide them, and delete them. |
+| Teammate board | Review active teammate requests and remove posts. Students manage their own requests at `/teammate`. |
+
+Slides support **PNG, JPEG, WebP, and GIF**, up to **4 MB** each. A landscape
+16:9 image fits the TV best. The Notices screen appears when an active slide
+exists. Refresh the dashboard to see saved theme and slide changes immediately,
+or wait for its automatic refresh.
+
+API credentials and sync settings are configured in `.env`. Campus statistics
+and milestone counts update automatically.
+
+## Environment variables
+
+Blank optional settings use the fallback described below. Defaults match
+[.env.example](.env.example).
+
+### App and login
+
+| Variable | Value / example | Description |
+| --- | --- | --- |
+| `APP_PUBLIC_URL` | `http://192.168.1.50:27942` | Set to the app's external base address, without a page path. Used for login redirects and the teammate QR code. Use an address reachable by campus devices. |
+| `APP_PORT` | `27942` | Host port for the Docker app. Update the public URL and registered callback if you change it. |
+| `APP_MODE` | `production` | Restricts admin to 42 staff. `development` allows any signed-in 42 user into admin; use it only for local testing. |
+| `CAMPUS_TIMEZONE` | `Europe/Warsaw` | Campus timezone for daily schedules and date calculations. Docker also sets the app's system timezone to this value. |
+| `SESSION_SECRET` | Blank, or a long random secret | Optional key for signing login cookies. Falls back to `FORTYTWO_CLIENT_SECRET`. Changing the signing key invalidates existing sessions. |
+
+### PostgreSQL
+
+| Variable | Value / example | Description |
+| --- | --- | --- |
+| `POSTGRES_USER` | `ft42` | Database user created by Docker on first initialization. |
+| `POSTGRES_PASSWORD` | `ft42` | Example database password. Choose your own before the first deployment. |
+| `POSTGRES_DB` | `ft42_dashboard` | Database name created by Docker on first initialization. |
+| `POSTGRES_PORT` | `26542` | Host port for PostgreSQL, used by local development and database tools. |
+| `DATABASE_URL` | `postgres://ft42:ft42@localhost:26542/ft42_dashboard` | Connection string when running outside Docker. Match the user, password, port, and database above. Compose generates the app's internal connection string automatically. |
+
+Changing initialization values in `.env` does not update an existing PostgreSQL
+user, password, or database. For local development, URL-encode special characters
+in the password portion of `DATABASE_URL`. The supplied Compose file inserts
+`POSTGRES_PASSWORD` directly into a connection URL, so a long random
+letters-and-numbers password works without additional URL escaping.
+
+### 42 Intra
+
+| Variable | Value / example | Description |
+| --- | --- | --- |
+| `FORTYTWO_CLIENT_ID` | Your application's client ID | Required for campus data and 42 login. |
+| `FORTYTWO_CLIENT_SECRET` | Your application's client secret | Required for campus data and 42 login; also signs sessions if `SESSION_SECRET` is blank. |
+| `FORTYTWO_API_BASE_URL` | `https://api.intra.42.fr` | Base URL for the Intra API and OAuth endpoints. Keep the default for normal use. |
+| `FORTYTWO_CAMPUS_ID` | Blank, or a campus ID | Optional campus override. Blank resolves the Warsaw campus automatically. |
+| `FORTYTWO_CURSUS_ID` | `21` | Cursus used for campus statistics and projects; `21` is 42cursus. |
+| `FORTYTWO_REDIRECT_URI` | Blank | Optional full callback URL override. Normally derived from `APP_PUBLIC_URL` plus `/api/auth/callback`. If set, it must point to that route and match the registered 42 redirect URI. |
+
+### Pace milestones
+
+| Variable | Value / example | Description |
+| --- | --- | --- |
+| `OIDC_OP_URL` | Your Keycloak base URL | Required for milestones. Include any base path your provider uses, but omit `/realms/...`; the app appends the `staff-42` token endpoint. |
+| `OIDC_RP_CLIENT_ID` | Your Keycloak client ID | Required client for the Pace password-grant login. |
+| `OIDC_RP_CLIENT_SECRET` | Your Keycloak client secret | Required secret for that client. |
+| `USER_LOGIN` | Your staff username | Required account with access to the intended campus's Pace data. |
+| `USER_PASSWORD` | That account's password | Required for the Keycloak password grant. |
+| `PACE_URL` | `https://pace-system.42.fr/api/v1` | Pace API base URL. The app appends `/milestones` and fetches all pages. |
+
+### Optional tests
+
+| Variable | Value / example | Description |
+| --- | --- | --- |
+| `MILESTONES_TEST_DATABASE_URL` | Blank, or a PostgreSQL connection string | Enables milestone SQL integration tests. Set it in the shell running `npm test`; Vitest does not automatically load `.env`. Tests use connection-local temporary tables. Blank skips these tests. |
+
+Docker and Next.js manage their own internal runtime variables; they do not need
+to be added to `.env`.
+
+## Automatic updates
+
+| Data | Schedule |
+| --- | --- |
+| Campus data, events, and session history | On startup when due, then every 30 minutes. |
+| Pace milestones | On the first startup, then the first scheduler tick after campus-local midnight. |
+| Attendance forecast | Once per campus-local calendar day, using stored session history. |
+
+The scheduler checks every minute and catches up after downtime. Milestones
+count each Pace user once, using their highest record ID as the latest milestone,
+including unvalidated records. Failed milestone syncs keep the last successful
+data and retry on the next tick. Without Pace credentials, the milestone chart
+stays empty until data has been synced.
+
+## Stop, update, and troubleshoot
+
+| Task | Command |
+| --- | --- |
+| View status | `docker compose ps` |
+| Follow app logs | `docker compose logs -f app` |
+| Stop containers and keep stored data | `docker compose down` |
+| Start again | `docker compose up -d` |
+| Deploy updated source code | `docker compose up -d --build` |
+| Apply `.env` changes | `docker compose up -d` |
+
+PostgreSQL data and uploaded slides survive normal container stops and rebuilds.
+`docker compose down -v` deletes the stored data.
+
+## npm Docker shortcuts
+
+With Node.js and npm installed, run these from the project folder:
+
+| Command | What it does |
+| --- | --- |
+| `npm run docker:up` | Builds the app image and starts the app and PostgreSQL in the background. Use it for the first deployment or after code changes. |
+| `npm run docker:down` | Stops and removes the containers and network. Keeps database data and uploaded slides. |
+| `npm run docker:clean` | Stops and removes containers, locally built images, and orphan containers. Keeps data volumes, including the database and uploaded slides. |
+| `npm run docker:logs` | Follows app logs. Press `Ctrl+C` to exit the logs without stopping the app. |
+
+After `docker:down` or `docker:clean`, run `npm run docker:up` to start again.
+
+## Troubleshooting
+
+| Problem | Check |
+| --- | --- |
+| Dashboard is empty after startup | Allow a few minutes, then check app logs and Intra credentials. |
+| Milestones are empty | Check all five Pace credentials and look for `milestones` errors in app logs. |
+| Login rejects the redirect URL | Match `APP_PUBLIC_URL` and the registered callback exactly, including the port. Check any `FORTYTWO_REDIRECT_URI` override. |
+| QR code or login sends phones to localhost | Set `APP_PUBLIC_URL` to the server's LAN address or hostname and apply `.env` changes. |
+| Admin access is denied | Sign in with a 42 staff account. |
+| Local app cannot connect to PostgreSQL | Check `DATABASE_URL`, `POSTGRES_PORT`, and whether the database container is running. |
+
+## Local development
+
+Use Node.js 22 and Docker. Complete the `.env` setup above, set
+`APP_PUBLIC_URL=http://localhost:3000`, and register
+`http://localhost:3000/api/auth/callback` in your 42 application. Update
+`DATABASE_URL` if you changed the database credentials or host port.
+
+```bash
+npm ci
+docker compose up -d postgres
+npm run dev
+```
+
+Open [http://localhost:3000/dashboard](http://localhost:3000/dashboard).
+Use the server's LAN address instead of localhost when testing with phones.
+Set `APP_MODE=development` only if you need to test admin with a non-staff account.
+
+```bash
+npm test
 npm run typecheck
-
-npm run db:up          # Postgres only, for local dev
-npm run db:psql        # psql shell
-
-npm run docker:up      # build + start everything (rerun to redeploy)
-npm run docker:logs    # follow the app — ingest runs, API errors
-npm run docker:down    # stop, keep images and data
-npm run docker:clean   # stop and delete images (data survives)
-npm run docker:nuke    # ...and the volumes too — next boot re-backfills 60 days
+npm run lint
 ```
 
-`.env` is read at container start, so credential changes just need
-`npm run docker:up` — no rebuild.
-
+For implementation details, see [Architecture](docs/architecture.md)
+and [API research](docs/api-research.md).
