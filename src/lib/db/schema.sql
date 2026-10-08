@@ -42,6 +42,31 @@ CREATE TABLE IF NOT EXISTS job_runs (
 CREATE INDEX IF NOT EXISTS job_runs_job_started_idx
   ON job_runs (job, started_at DESC);
 
+-- Pace history and one-student/one-milestone totals, published atomically.
+CREATE TABLE IF NOT EXISTS pace_milestones (
+  id BIGINT PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  level INTEGER NOT NULL CHECK (level >= 0),
+  deadline DATE,
+  validated_at DATE,
+  payload JSONB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS pace_milestones_user_latest_idx
+  ON pace_milestones (user_id, id DESC);
+
+CREATE TABLE IF NOT EXISTS milestone_counts (
+  level INTEGER PRIMARY KEY CHECK (level >= 0),
+  student_count INTEGER NOT NULL CHECK (student_count >= 0)
+);
+
+-- Also records successful empty feeds so they are not fetched every minute.
+CREATE TABLE IF NOT EXISTS milestone_sync (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  synced_for DATE NOT NULL,
+  record_count INTEGER NOT NULL,
+  synced_at TIMESTAMPTZ NOT NULL
+);
+
 -- Keep the shared job history for ingest and attendance forecasts.
 DELETE FROM job_runs WHERE job = 'project-catalog';
 

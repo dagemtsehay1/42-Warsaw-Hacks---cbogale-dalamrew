@@ -14,7 +14,7 @@ Five screens, 20 seconds each:
 
 | Screen | Shows |
 |---|---|
-| **Campus stats** | Headline numbers, level distribution, what projects people are working on |
+| **Campus stats** | Headline numbers, milestone distribution, what projects people are working on |
 | **Presence** | Who's here now, attendance forecast, longest session of the week, first person in today |
 | **Achievements** | The twenty most recent validated projects as a wall of faces — exam passes get fireworks |
 | **Coalitions** | Score history for the season and the top contributors |
@@ -140,11 +140,31 @@ score — so the chart starts at the last reset, found by walking back until the
 running total would cross zero. Nothing is invented; a coalition whose ledger
 can't be fetched is left off the chart rather than drawn flat.
 
-**Levels, not milestones.** The stats screen bands students by whole cursus level
-because the API has no milestone field anywhere, and level isn't a substitute:
-Warsaw has Cadets still in the common core at level 9 while Transcenders start
-around 14. "Past common core" comes from `grade`, which is authoritative. Making
-up a level→milestone table would put wrong numbers on a wall.
+**Milestones come from Pace.** Configure `OIDC_OP_URL`, `OIDC_RP_CLIENT_ID`,
+`OIDC_RP_CLIENT_SECRET`, `USER_LOGIN` and `USER_PASSWORD` in `.env`. The server
+uses the `staff-42` Keycloak password grant and fetches every page of
+`${PACE_URL}/milestones` (default base: `https://pace-system.42.fr/api/v1`).
+These are separate credentials from the Intra OAuth application.
+
+The first scheduler tick syncs missing data. Subsequent syncs run at the first
+tick after **midnight in `CAMPUS_TIMEZONE`** (normally within one minute); a
+restart catches up missed days without repeating a successful daily sync.
+Failed syncs retry on the next tick and keep the previous data.
+
+All raw records are stored in `pace_milestones`. After all pages arrive, SQL
+selects the highest record `id` per `user_id` as their latest milestone,
+including unvalidated records, and saves the totals in `milestone_counts`.
+The response has no creation timestamp, so record ID is the ordering assumption.
+Both tables and the daily sync marker update in one transaction. Counts include
+every user in the configured Pace feed once, without Intra enrolment filters;
+configure credentials for the intended campus. A successful empty feed clears
+previous data. Partial, inconsistent or failed responses leave it untouched.
+
+The existing chart and average/top metric read these stored milestone counts
+on every dashboard request. Other campus stats still come from Intra, including
+"Past common core" from `grade`. Without Pace data the milestone chart is empty.
+The existing payload keys (`levelDistribution`, `averageLevel`, `topLevel`) are
+retained for compatibility; dashboard reads replace their legacy level values.
 
 ## Config
 
@@ -153,6 +173,13 @@ FORTYTWO_CLIENT_ID=
 FORTYTWO_CLIENT_SECRET=
 FORTYTWO_CURSUS_ID=21              # 42cursus
 FORTYTWO_CAMPUS_ID=                # resolved automatically when empty
+
+OIDC_OP_URL=                     # Keycloak base URL, without /realms/...
+OIDC_RP_CLIENT_ID=
+OIDC_RP_CLIENT_SECRET=
+USER_LOGIN=
+USER_PASSWORD=
+PACE_URL=https://pace-system.42.fr/api/v1
 
 DATABASE_URL=postgres://ft42:ft42@localhost:26542/ft42_dashboard
 POSTGRES_PORT=26542
@@ -193,6 +220,11 @@ answering. 3000 is taken by every other dev server on the machine.
 containerised app ignores it and uses the internal network instead.
 
 Don't commit real credentials.
+
+The optional Postgres milestone integration tests use
+`MILESTONES_TEST_DATABASE_URL` and connection-local temporary tables. Set it to
+a reachable Postgres connection string before running `npm test`; without it,
+only those integration tests are skipped.
 
 ## Commands
 

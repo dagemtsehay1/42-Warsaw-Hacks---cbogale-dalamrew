@@ -1,6 +1,8 @@
 import { campusToday } from "@/features/campus/campus-time";
 import { hasForecastFor, runForecastJob } from "@/features/campus/forecast-job";
 import { runIngest } from "@/features/campus/ingest";
+import { hasPaceCredentials } from "@/features/milestones/config";
+import { hasMilestonesFor, runMilestoneSync } from "@/features/milestones/repository";
 import { hasFortyTwoCredentials } from "@/lib/api/42/config";
 import { INGEST_INTERVAL_MS } from "@/lib/dashboard-config";
 import { hasDatabase, migrate, query, withClient } from "@/lib/db/pool";
@@ -15,7 +17,7 @@ const TICK_MS = 60_000;
  */
 const LOCK_ID = 4242_0001;
 
-type JobName = "ingest" | "forecast";
+type JobName = "ingest" | "forecast" | "milestones";
 
 let started = false;
 let ticking = false;
@@ -65,6 +67,8 @@ async function ingestIsDue(): Promise<boolean> {
  * - **ingest** every 30 minutes — pull the 42 API and snapshot it;
  * - **forecast** once per campus-local day — the first tick after midnight
  *   computes the day's numbers, and nothing recomputes them until tomorrow.
+ * - **milestones** on the first startup and once per campus-local day, after
+ *   midnight; failed or missed syncs are retried on the next tick.
  *
  * Jobs are driven off what the database says already happened rather than off
  * timers held in memory, so a restart resumes the schedule instead of resetting
@@ -79,11 +83,14 @@ export async function runDueJobs(): Promise<void> {
     if (!locked.rows[0]?.locked) return;
 
     try {
-      if (await ingestIsDue()) {
+      const today = campusToday();
+      if (hasPaceCredentials() && !(await hasMilestonesFor(today))) {
+        await recordRun("milestones", () => runMilestoneSync());
+      }
+      if (hasFortyTwoCredentials() && await ingestIsDue()) {
         await recordRun("ingest", runIngest);
       }
-      const today = campusToday();
-      if (!(await hasForecastFor(today))) {
+      if (hasFortyTwoCredentials() && !(await hasForecastFor(today))) {
         await recordRun("forecast", () => runForecastJob());
       }
     } finally {
@@ -102,8 +109,8 @@ export function startScheduler(): void {
     console.warn("[jobs] DATABASE_URL is not set — scheduler disabled");
     return;
   }
-  if (!hasFortyTwoCredentials()) {
-    console.warn("[jobs] 42 API credentials missing — scheduler disabled");
+  if (!hasFortyTwoCredentials() && !hasPaceCredentials()) {
+    console.warn("[jobs] 42 and Pace API credentials missing — scheduler disabled");
     return;
   }
   started = true;

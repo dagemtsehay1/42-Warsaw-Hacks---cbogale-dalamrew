@@ -1,6 +1,7 @@
 import { campusToday } from "@/features/campus/campus-time";
 import { readWeekEvents } from "@/features/campus/events";
 import { getInitialDashboard } from "@/features/campus/initial-dashboard";
+import { readMilestoneDistribution, withMilestoneStats } from "@/features/milestones/repository";
 import { listTeammateRequests } from "@/features/teammates/repository";
 import { listActiveSlides } from "@/features/slides/repository";
 import { resolveBaseUrl } from "@/lib/api/42/oauth";
@@ -42,7 +43,16 @@ export async function readDashboardView(): Promise<DashboardView> {
   // No database configured, or nothing ingested yet: fall back to building a
   // payload directly so the app is still runnable (`npm run dev` with no
   // Postgres, or the first minute after a deploy).
-  const payload = await getInitialDashboard();
+  const initial = await getInitialDashboard();
+  // Also overlay the daily data on cached/warming-up payloads. Old snapshots
+  // must never be displayed as milestones just because they contain levels.
+  let bands: Awaited<ReturnType<typeof readMilestoneDistribution>> = [];
+  try {
+    bands = await readMilestoneDistribution();
+  } catch (error) {
+    console.error("[dashboard] milestone read failed:", error);
+  }
+  const payload = initial ? withMilestoneStats(initial, bands) : null;
   const capturedAt = payload?.fetchedAt ?? new Date().toISOString();
   return {
     payload,
@@ -72,20 +82,18 @@ async function readFromDatabase(): Promise<DashboardView | null> {
   const snapshot = snapshots[0];
   if (!snapshot) return null;
 
-  // Four small indexed reads alongside the snapshot. They are separate rather
-  // than baked into the payload because all three change on their own schedule:
-  // a student adds themselves between ingests, and bocal expects an upload to
-  // appear without waiting half an hour for the next one.
-  const [forecast, events, teammates, slides] = await Promise.all([
+  // These change independently of the half-hourly dashboard snapshot.
+  const [forecast, events, teammates, slides, milestones] = await Promise.all([
     readForecast(),
     readWeekEvents(),
     listTeammateRequests(),
     listActiveSlides(),
+    readMilestoneDistribution(),
   ]);
   const capturedMs = new Date(snapshot.captured_at).getTime();
 
   return {
-    payload: snapshot.payload,
+    payload: withMilestoneStats(snapshot.payload, milestones),
     capturedAt: snapshot.captured_at,
     nextRefreshAt: new Date(
       capturedMs + INGEST_INTERVAL_MS + REFRESH_GRACE_MS,

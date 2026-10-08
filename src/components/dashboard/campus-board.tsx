@@ -89,9 +89,9 @@ export function CampusBoard({
                       // hint={`${formatNumber(data.stats.campusMembers)} campus members`}
                     />
                     <Metric
-                      label="Average level"
+                      label="Average milestone"
                       value={formatLevel(data.stats.averageLevel)}
-                      hint={`top level ${formatLevel(data.stats.topLevel)}`}
+                      hint={`top milestone ${formatNumber(data.stats.topLevel)}`}
                     />
                     <Metric
                       label="Past common core"

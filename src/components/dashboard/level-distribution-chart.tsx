@@ -15,7 +15,7 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
           <Heading />
         </header>
         <div className="flex flex-1 items-center justify-center text-sm text-[var(--muted)]">
-          Cursus levels unavailable right now.
+          Milestones unavailable right now.
         </div>
       </section>
     );
@@ -23,7 +23,7 @@ export function LevelDistributionChart({ bands }: { bands: LevelBandStat[] }) {
 
   // Empty bands are dropped from the wedge data (a zero-value slice draws a
   // hairline artifact at its start angle) but stay in the legend, which is where
-  // "nobody is at level 6 yet" is a readable fact rather than a rendering glitch.
+  // "nobody is at milestone 6 yet" is a readable fact rather than a rendering glitch.
   const plotted = bands.filter((band) => band.studentCount > 0);
 
   return (
@@ -111,7 +111,7 @@ function Heading() {
         Common Core Progress
       </h2>
       <p className="text-xs text-[var(--muted)]">
-        Students by cursus level
+        Students by milestone
       </p>
     </>
   );

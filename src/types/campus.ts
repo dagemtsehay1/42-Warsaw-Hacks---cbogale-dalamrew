@@ -70,11 +70,11 @@ export type CampusPulse = {
   activeProjects: number;
 };
 
-/** One whole level of the cursus, e.g. everyone between level 3.00 and 3.99. */
+/** Chart row. The database read path supplies exact Pace milestones. */
 export type LevelBandStat = {
   id: string;
   label: string;
-  /** Lower bound of the band; the top band is open-ended. */
+  /** Pace milestone number on the dashboard; legacy snapshots used level bands. */
   level: number;
   studentCount: number;
 };
@@ -85,6 +85,7 @@ export type CampusStats = {
   studentsInCursus: number;
   /** Everyone the campus has ever registered, piscines and alumni included. */
   campusMembers: number;
+  /** Legacy keys; the dashboard read path replaces these with Pace milestone stats. */
   averageLevel: number;
   topLevel: number;
   /** Grade "Transcender" or "Alumni" — the common core is behind them. */
