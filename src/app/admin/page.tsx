@@ -6,8 +6,6 @@ import { ConfirmDeleteButton } from "./confirm-delete-button";
 import { UploadForm } from "./upload-form";
 import { ThemeSelector } from "./theme-selector";
 import { AdminCard } from "./admin-card";
-import { MilestoneSettings } from "./milestone-settings";
-import { readMilestoneSettings, readProjectCatalog } from "@/features/milestones/repository";
 import { readTheme } from "@/features/themes/repository";
 import { Button } from "@/components/ui/button";
 import { StudentAvatar } from "@/components/ui/student-avatar";
@@ -81,20 +79,15 @@ export default async function AdminPage() {
   }
 
   await migrate();
-  const [slides, teammatePosts, theme, milestones, catalog] = await Promise.all([
+  const [slides, teammatePosts, theme] = await Promise.all([
     listAllSlides(),
     listAllTeammateRequests(),
     readTheme(),
-    readMilestoneSettings(),
-    readProjectCatalog(),
   ]);
 
   return (
     <Shell login={user.login}>
-      <AdminCard title="Common core paths" description={`${milestones.paths.length} paths · Configure milestones and project choices`} defaultOpen>
-        <MilestoneSettings initial={milestones} projects={catalog.projects} syncedAt={catalog.syncedAt} />
-      </AdminCard>
-      <AdminCard title="Appearance" description="Choose the shared dashboard theme">
+      <AdminCard title="Appearance" description="Choose the shared dashboard theme" defaultOpen>
         <ThemeSelector selected={theme} />
       </AdminCard>
       <AdminCard title="Slides & notices" description={`${slides.length} slides · Upload, show, hide, or remove posters`}>
@@ -244,7 +237,7 @@ function Shell({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Board administration</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Manage the dashboard theme, common core milestones, and board content.
+            Manage the dashboard theme, slides, and teammate board.
           </p>
         </div>
         {login && (

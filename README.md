@@ -42,36 +42,8 @@ is your own business.
 pass around. Upload a poster and it becomes a screen in the rotation; hide or
 delete it and it's gone on the next refresh.
 
-### Common core milestone configuration
-
-In `/admin`, create named paths such as **Old common core** and **New common core**.
-Every path starts with milestones **0–6**. Search for projects and add them as
-required tags; a selected project disappears from suggestions elsewhere in that
-path. The same project can be used in other paths.
-
-Use **Add choose-one group** for alternatives such as Agentsmith or tree_nity.
-Each group needs at least two projects. Students must complete all required
-projects and one project from each group. **Save milestone settings** saves all
-paths together. Paths can be deleted, but at least one must remain.
-
-Admin sections and milestones are collapsible. Each milestone's summary shows
-its projects and alternative groups; use **Expand all** or **Collapse all** to
-switch between an overview and editing. Collapsing a card keeps unsaved edits.
-
-The catalog retains the complete JSON objects returned by `/v2/projects`,
-including ID, name, slug, and nested fields. Saving milestones copies these
-objects from the database into required projects and choose-one groups. Older
-ID-only selections remain editable and are automatically upgraded after the
-first full-object catalog sync. Already saved objects remain snapshots until
-the next admin save; the weekly refresh updates the catalog.
-
-The server fetches all pages of `/v2/projects` on its first scheduled run and
-every seven days after a successful refresh. The catalog is stored in Postgres;
-searching never calls the 42 API. Failed refreshes preserve the previous catalog
-and retry after an hour. Database and 42 API credentials must be configured, and
-the app must be running for scheduled syncs. Reload the admin page after a sync
-to see newly available projects. Configuration is stored for future milestone
-calculations; the existing dashboard level chart continues to show cursus levels.
+The admin page groups appearance, slides, and teammate moderation into
+collapsible sections.
 
 ## Running it
 

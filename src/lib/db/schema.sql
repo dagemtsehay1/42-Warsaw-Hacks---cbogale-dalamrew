@@ -1,29 +1,9 @@
 -- Applied on every server boot; every statement must be idempotent.
 
--- Retain removed projects so saved tags keep their names.
-CREATE TABLE IF NOT EXISTS project_catalog (
-  id INTEGER PRIMARY KEY,
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL,
-  available BOOLEAN NOT NULL DEFAULT true,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
--- Full unmodified objects returned by /v2/projects; null marks legacy rows
--- that the scheduler must fetch once before resuming its weekly cadence.
-ALTER TABLE project_catalog ADD COLUMN IF NOT EXISTS payload JSONB;
-
-CREATE TABLE IF NOT EXISTS milestone_settings (
-  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  paths JSONB NOT NULL CHECK (jsonb_typeof(paths) = 'array' AND jsonb_array_length(paths) >= 1),
-  version INTEGER NOT NULL DEFAULT 1,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-INSERT INTO milestone_settings (id, paths)
-SELECT 1, jsonb_build_array(jsonb_build_object(
-  'id', 'default', 'name', 'Common core', 'milestones',
-  (SELECT jsonb_agg(jsonb_build_object('required', '[]'::jsonb, 'alternatives', '[]'::jsonb) ORDER BY n)
-   FROM generate_series(0, 6) AS n)
-)) ON CONFLICT (id) DO NOTHING;
+-- Retired admin-only milestone configuration and its project catalog.
+-- No CASCADE: unexpected dependencies must prevent deletion.
+DROP TABLE IF EXISTS milestone_settings;
+DROP TABLE IF EXISTS project_catalog;
 
 -- One shared theme for every dashboard display. Never reset an existing choice.
 CREATE TABLE IF NOT EXISTS dashboard_theme (
@@ -61,6 +41,9 @@ CREATE TABLE IF NOT EXISTS job_runs (
 
 CREATE INDEX IF NOT EXISTS job_runs_job_started_idx
   ON job_runs (job, started_at DESC);
+
+-- Keep the shared job history for ingest and attendance forecasts.
+DELETE FROM job_runs WHERE job = 'project-catalog';
 
 -- Host sessions, kept for ~10 weeks. This is the history the attendance
 -- forecast is fitted on; `id` is the 42 location id so re-fetching a window

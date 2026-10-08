@@ -56,7 +56,7 @@ export async function withClient<T>(
 let migrated: Promise<void> | null = null;
 
 /**
- * Applies `schema.sql`. Every statement is `IF NOT EXISTS`, so this is safe to
+ * Applies `schema.sql`. Every statement is idempotent, so this is safe to
  * run on every boot; the promise is memoised so concurrent callers share one run.
  */
 export function migrate(): Promise<void> {
