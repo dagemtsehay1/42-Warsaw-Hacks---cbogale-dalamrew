@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { LegacyPolyfills } from "@/components/tv/legacy-polyfills";
 import { readTheme } from "@/features/themes/repository";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +38,7 @@ export default async function RootLayout({
       className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full font-sans">
+        <LegacyPolyfills />
         {children}
       </body>
     </html>

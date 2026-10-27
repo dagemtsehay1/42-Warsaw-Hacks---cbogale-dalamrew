@@ -316,3 +316,98 @@ a {
     opacity: 0.6;
   }
 }
+
+/*
+ * Chromium 85 fallbacks for the Samsung QM65B's browser (Tizen 6.5).
+ *
+ * Tailwind v4 emits a few features from newer browsers. These blocks are
+ * skipped by modern browsers (the `@supports` condition is false) and apply
+ * only where the feature is missing, so the design on a laptop is unchanged.
+ */
+
+/* Tailwind normally gives each `--tw-*` variable its default through
+   `@property`. We drop those rules for Chromium 85 (they crash it on reload),
+   so set the same defaults here. Every utility overrides its own variables on
+   the element, exactly as a registered initial value would. Kept in the `base`
+   layer so a utility's variable always wins over this default. */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop {
+    --tw-translate-x: 0;
+    --tw-translate-y: 0;
+    --tw-translate-z: 0;
+    --tw-divide-y-reverse: 0;
+    --tw-border-style: solid;
+    --tw-leading: initial;
+    --tw-font-weight: initial;
+    --tw-tracking: initial;
+    --tw-ordinal: initial;
+    --tw-slashed-zero: initial;
+    --tw-numeric-figure: initial;
+    --tw-numeric-spacing: initial;
+    --tw-numeric-fraction: initial;
+    --tw-shadow: 0 0 #0000;
+    --tw-shadow-color: initial;
+    --tw-shadow-alpha: 100%;
+    --tw-inset-shadow: 0 0 #0000;
+    --tw-inset-shadow-color: initial;
+    --tw-inset-shadow-alpha: 100%;
+    --tw-ring-color: initial;
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-inset-ring-color: initial;
+    --tw-inset-ring-shadow: 0 0 #0000;
+    --tw-ring-inset: initial;
+    --tw-ring-offset-width: 0px;
+    --tw-ring-offset-color: #fff;
+    --tw-ring-offset-shadow: 0 0 #0000;
+    --tw-outline-style: solid;
+    --tw-blur: initial;
+    --tw-brightness: initial;
+    --tw-contrast: initial;
+    --tw-grayscale: initial;
+    --tw-hue-rotate: initial;
+    --tw-invert: initial;
+    --tw-opacity: initial;
+    --tw-saturate: initial;
+    --tw-sepia: initial;
+    --tw-drop-shadow: initial;
+    --tw-drop-shadow-color: initial;
+    --tw-drop-shadow-alpha: 100%;
+    --tw-drop-shadow-size: initial;
+  }
+}
+
+/* `dvh` units landed in Chrome 108. On a fixed TV panel `vh` is identical. */
+@supports not (height: 100dvh) {
+  .h-dvh {
+    height: 100vh;
+  }
+
+  .min-h-dvh {
+    min-height: 100vh;
+  }
+
+  @media (min-width: 64rem) {
+    .lg\:h-dvh {
+      height: 100vh;
+    }
+  }
+}
+
+/* Individual `translate` landed in Chrome 104. The slide dots use it to
+   centre themselves under the poster. */
+@supports not (translate: 0) {
+  .-translate-x-1\/2 {
+    transform: translateX(-50%);
+  }
+}
+
+/* `:where()` landed in Chrome 88. The only place it affects the board is the
+   divider between coalition contributors; restore that one rule. */
+@supports not selector(:where(*)) {
+  .divide-y > :not(:last-child) {
+    border-bottom: 1px solid var(--border);
+  }
+}
