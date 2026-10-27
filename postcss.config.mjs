@@ -1,3 +1,5 @@
+import path from "node:path";
+
 const config = {
   plugins: {
     "@tailwindcss/postcss": {},
@@ -13,6 +15,10 @@ const config = {
     // rules reloads, so drop them. globals.css sets the same `--tw-*` defaults
     // for browsers where Tailwind's own fallback does not apply.
     "postcss-remove-at-rules": { property: "*" },
+    // `var(--x,)` -> `var(--x, )`; Chromium 85 drops declarations with `,)`.
+    // Absolute because Next resolves plugin names from its build output, not
+    // from this file.
+    [path.join(process.cwd(), "postcss/empty-var-fallback.cjs")]: {},
   },
 };
 
