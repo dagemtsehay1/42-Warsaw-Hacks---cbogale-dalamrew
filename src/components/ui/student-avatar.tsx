@@ -29,8 +29,9 @@ export function StudentAvatar({
 
   return (
     <Image
-      src={src}
+      src={`/api/42/image?url=${encodeURIComponent(src)}`}
       alt={alt}
+      unoptimized
       // Rastered at twice the box it is drawn in, then constrained by CSS. Two
       // reasons, both of which showed as blur: 42 portraits are 4:3, so a raster
       // requested at `size` wide is only 0.75 × `size` tall and `object-cover`
