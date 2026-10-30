@@ -96,6 +96,7 @@ async function fetchPage(page: number) {
 export async function fetchAllMilestones(): Promise<PaceMilestone[]> {
   const items: PaceMilestone[] = [];
   const ids = new Set<number>();
+  let receivedCount = 0;
   let first: Awaited<ReturnType<typeof fetchPage>> | undefined;
   for (let page = 1; ; page++) {
     const batch = await fetchPage(page);
@@ -106,14 +107,19 @@ export async function fetchAllMilestones(): Promise<PaceMilestone[]> {
     if (batch.pages !== Math.ceil(batch.total / batch.size) && !(batch.total === 0 && batch.pages === 1)) {
       throw new Error("Inconsistent Pace pagination metadata");
     }
+    receivedCount += batch.items.length;
     for (const item of batch.items) {
-      if (ids.has(item.id)) throw new Error("Duplicate Pace milestone across pages");
+      // Pace pages can overlap. Keep one copy per record ID, while preserving
+      // distinct records for the same user and level.
+      if (ids.has(item.id)) continue;
       ids.add(item.id);
       items.push(item);
     }
     if (page >= batch.pages) break;
     if (batch.items.length === 0) throw new Error("Empty Pace page before the last page");
   }
-  if (items.length !== first!.total) throw new Error("Incomplete Pace milestone response");
+  // Count received rows before deduplication: repeated records may be included
+  // in the reported total, or may be additional rows from overlapping pages.
+  if (receivedCount < first!.total) throw new Error("Incomplete Pace milestone response");
   return items;
 }

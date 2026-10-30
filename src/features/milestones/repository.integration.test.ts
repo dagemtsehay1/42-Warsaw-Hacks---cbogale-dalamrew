@@ -37,13 +37,13 @@ describe.skipIf(!process.env.MILESTONES_TEST_DATABASE_URL)("milestone Postgres i
   afterAll(async () => { await client?.end(); });
 
   it("counts each user at their newest record regardless of page order, validation or maximum level", async () => {
-    const records = [record(30, 12, 2), record(10, 12, 0), record(20, 12, 1),
+    const records = [record(30, 12, 2), record(10, 12, 0), record(20, 12, 1), record(25, 12, 2),
       record(40, 13, 4), record(50, 13, 1), record(60, 14, 2)];
     await saveMilestones(records, "2026-10-08");
     const rows = await readMilestoneDistribution();
     expect(rows.map((row) => row.studentCount)).toEqual([0, 1, 2, 0, 0, 0, 0]);
     expect(rows[2].label).toBe("Milestone 2");
-    expect((await client.query("SELECT count(*)::int AS count FROM pg_temp.pace_milestones")).rows[0].count).toBe(6);
+    expect((await client.query("SELECT count(*)::int AS count FROM pg_temp.pace_milestones")).rows[0].count).toBe(7);
     expect(await hasMilestonesFor("2026-10-08")).toBe(true);
     expect(await hasMilestonesFor("2026-10-09")).toBe(false);
   });

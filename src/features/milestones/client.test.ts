@@ -43,6 +43,40 @@ describe("Pace milestone client", () => {
     expect(fetchMock).toHaveBeenCalledTimes(49);
   });
 
+  it("ignores a page of repeated records and continues to later pages", async () => {
+    fetchMock.mockResolvedValueOnce(json(page(1)))
+      .mockResolvedValueOnce(json(page(2, { items: [milestone(1)] })))
+      .mockResolvedValueOnce(json(page(3)));
+    const { fetchAllMilestones } = await import("./client");
+    expect(await fetchAllMilestones()).toEqual([milestone(1), milestone(3)]);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("ignores duplicates within a page", async () => {
+    fetchMock.mockResolvedValueOnce(json(page(1, {
+      items: [milestone(1), milestone(1)], total: 2, size: 2, pages: 1,
+    })));
+    const { fetchAllMilestones } = await import("./client");
+    expect(await fetchAllMilestones()).toEqual([milestone(1)]);
+  });
+
+  it("accepts overlapping pages when received rows exceed the reported total", async () => {
+    fetchMock.mockResolvedValueOnce(json(page(1, {
+      items: [milestone(1), milestone(2)], size: 2, pages: 2,
+    }))).mockResolvedValueOnce(json(page(2, {
+      items: [milestone(2), milestone(3)], size: 2, pages: 2,
+    })));
+    const { fetchAllMilestones } = await import("./client");
+    expect(await fetchAllMilestones()).toEqual([milestone(1), milestone(2), milestone(3)]);
+  });
+
+  it("preserves distinct records with the same user and level across pages", async () => {
+    const records = [milestone(1), { ...milestone(2), level: 0 }, milestone(3)];
+    records.forEach((record, index) => fetchMock.mockResolvedValueOnce(json(page(index + 1, { items: [record] }))));
+    const { fetchAllMilestones } = await import("./client");
+    expect(await fetchAllMilestones()).toEqual(records);
+  });
+
   it.each([0, 1])("accepts a successful empty feed with %i pages", async (pages) => {
     fetchMock.mockResolvedValueOnce(json(page(1, { total: 0, pages, items: [] })));
     const { fetchAllMilestones } = await import("./client");
@@ -53,7 +87,6 @@ describe("Pace milestone client", () => {
     ["failed page", () => json({}, 403)],
     ["repeated page", () => json(page(1))],
     ["changed total", () => json(page(2, { total: 4, pages: 4 }))],
-    ["duplicate record", () => json(page(2, { items: [milestone(1)] }))],
     ["empty middle page", () => json(page(2, { items: [] }))],
     ["invalid record", () => json(page(2, { items: [{ ...milestone(2), level: -1 }] }))],
   ])("rejects the entire fetch on %s", async (_name, response) => {
@@ -64,6 +97,14 @@ describe("Pace milestone client", () => {
 
   it("rejects missing records on the final page", async () => {
     fetchMock.mockResolvedValueOnce(json(page(1))).mockResolvedValueOnce(json(page(2))).mockResolvedValueOnce(json(page(3, { items: [] })));
+    const { fetchAllMilestones } = await import("./client");
+    await expect(fetchAllMilestones()).rejects.toThrow("Incomplete");
+  });
+
+  it("still rejects a short response when earlier pages contain duplicates", async () => {
+    fetchMock.mockResolvedValueOnce(json(page(1)))
+      .mockResolvedValueOnce(json(page(2, { items: [milestone(1)] })))
+      .mockResolvedValueOnce(json(page(3, { items: [] })));
     const { fetchAllMilestones } = await import("./client");
     await expect(fetchAllMilestones()).rejects.toThrow("Incomplete");
   });
