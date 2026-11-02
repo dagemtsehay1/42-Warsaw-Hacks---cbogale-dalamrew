@@ -102,11 +102,13 @@ describe("mergeSnapshotWithPrevious", () => {
   it("keeps the fresh value when the new fetch worked", () => {
     const next = payload({
       coalitions: [{ ...coalition, score: 44_000 }],
+      cursusStudentIds: [12, 13],
     });
 
-    const merged = mergeSnapshotWithPrevious(next, payload());
+    const merged = mergeSnapshotWithPrevious(next, payload({ cursusStudentIds: [99] }));
 
     expect(merged.coalitions[0].score).toBe(44_000);
+    expect(merged.cursusStudentIds).toEqual([12, 13]);
     expect(merged.errors).toEqual([]);
   });
 
@@ -123,11 +125,13 @@ describe("mergeSnapshotWithPrevious", () => {
         projectsInProgress: 30,
       },
       levelDistribution: [],
+      cursusStudentIds: [],
     });
 
-    const merged = mergeSnapshotWithPrevious(next, payload());
+    const merged = mergeSnapshotWithPrevious(next, payload({ cursusStudentIds: [12, 13] }));
 
     expect(merged.stats.studentsInCursus).toBe(266);
+    expect(merged.cursusStudentIds).toEqual([12, 13]);
     expect(merged.stats.studentsBuilding).toBe(90);
     expect(merged.stats.projectsInProgress).toBe(30);
     expect(merged.levelDistribution).toHaveLength(1);

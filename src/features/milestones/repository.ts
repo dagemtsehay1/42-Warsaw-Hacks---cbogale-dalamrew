@@ -60,15 +60,28 @@ export async function runMilestoneSync(now = new Date()) {
   return { syncedFor: day, records: items.length, students: new Set(items.map((item) => item.user_id)).size };
 }
 
-export async function readMilestoneDistribution(): Promise<LevelBandStat[]> {
-  if (!hasDatabase()) return [];
+/** Match the roster used by the displayed snapshot, even between daily Pace syncs. */
+export async function readMilestoneDistribution(cursusStudentIds?: number[]): Promise<LevelBandStat[]> {
+  // Older snapshots have no roster. Never fall back to the campus-wide Pace totals.
+  if (!hasDatabase() || !cursusStudentIds) return [];
   return query<LevelBandStat>(
-    `SELECT 'milestone-' || levels.level AS id,
+    `WITH latest AS (
+       SELECT DISTINCT ON (user_id) user_id, level
+         FROM pace_milestones
+        WHERE user_id = ANY($1::bigint[])
+        ORDER BY user_id, id DESC
+     ), counts AS (
+       SELECT level, count(*)::integer AS student_count
+         FROM latest
+        GROUP BY level
+     )
+     SELECT 'milestone-' || levels.level AS id,
             'Milestone ' || levels.level AS label,
             levels.level, coalesce(counts.student_count, 0)::integer AS "studentCount"
-       FROM generate_series(0, greatest(6, (SELECT max(level) FROM milestone_counts))) AS levels(level)
-       LEFT JOIN milestone_counts AS counts USING (level)
+       FROM generate_series(0, greatest(6, (SELECT max(level) FROM counts))) AS levels(level)
+       LEFT JOIN counts USING (level)
       ORDER BY levels.level`,
+    [cursusStudentIds],
   );
 }
 

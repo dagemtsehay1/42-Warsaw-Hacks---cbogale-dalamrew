@@ -74,6 +74,11 @@ describe("milestone persistence", () => {
 
   it("does not try to read Postgres without a database", async () => {
     vi.mocked(hasDatabase).mockReturnValue(false);
+    expect(await readMilestoneDistribution([12])).toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it("does not expose unfiltered totals for old snapshots without a roster", async () => {
     expect(await readMilestoneDistribution()).toEqual([]);
     expect(query).not.toHaveBeenCalled();
   });

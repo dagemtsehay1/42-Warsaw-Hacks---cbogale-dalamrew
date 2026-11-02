@@ -193,6 +193,8 @@ export type DashboardPayload = {
   fetchedAt: string;
   pulse: CampusPulse;
   stats: CampusStats;
+  /** User IDs behind studentsInCursus; absent in snapshots made before roster tracking. */
+  cursusStudentIds?: number[];
   levelDistribution: LevelBandStat[];
   recentPasses: ProjectPass[];
   activeProjects: ActiveProjectStat[];

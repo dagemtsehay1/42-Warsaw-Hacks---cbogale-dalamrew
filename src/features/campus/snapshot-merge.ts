@@ -70,6 +70,7 @@ export function mergeSnapshotWithPrevious(
         projectsInProgress: merged.stats.projectsInProgress,
       };
       merged.levelDistribution = previous.levelDistribution;
+      merged.cursusStudentIds = previous.cursusStudentIds;
     },
     next.stats.studentsInCursus === 0 && previous.stats.studentsInCursus > 0,
   );
