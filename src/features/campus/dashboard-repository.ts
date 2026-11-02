@@ -48,7 +48,7 @@ export async function readDashboardView(): Promise<DashboardView> {
   // must never be displayed as milestones just because they contain levels.
   let bands: Awaited<ReturnType<typeof readMilestoneDistribution>> = [];
   try {
-    bands = await readMilestoneDistribution();
+    bands = await readMilestoneDistribution(initial?.cursusStudentIds);
   } catch (error) {
     console.error("[dashboard] milestone read failed:", error);
   }
@@ -88,7 +88,7 @@ async function readFromDatabase(): Promise<DashboardView | null> {
     readWeekEvents(),
     listTeammateRequests(),
     listActiveSlides(),
-    readMilestoneDistribution(),
+    readMilestoneDistribution(snapshot.payload.cursusStudentIds),
   ]);
   const capturedMs = new Date(snapshot.captured_at).getTime();
 
