@@ -32,10 +32,11 @@ export async function saveMilestones(items: PaceMilestone[], day: string): Promi
         `INSERT INTO milestone_counts (level, student_count)
          SELECT level, count(*)::integer
            FROM (
-             SELECT DISTINCT ON (user_id) user_id, level
+             SELECT user_id, max(level) + 1 AS level
                FROM pace_milestones
-              ORDER BY user_id, id DESC
+              GROUP BY user_id
            ) AS latest
+          WHERE level BETWEEN 1 AND 6
           GROUP BY level`,
       );
       await client.query(
@@ -61,27 +62,39 @@ export async function runMilestoneSync(now = new Date()) {
 }
 
 /** Match the roster used by the displayed snapshot, even between daily Pace syncs. */
-export async function readMilestoneDistribution(cursusStudentIds?: number[]): Promise<LevelBandStat[]> {
+export async function readMilestoneDistribution(milestoneStudentIds?: number[]): Promise<LevelBandStat[]> {
   // Older snapshots have no roster. Never fall back to the campus-wide Pace totals.
-  if (!hasDatabase() || !cursusStudentIds) return [];
+  if (!hasDatabase() || !milestoneStudentIds) return [];
   return query<LevelBandStat>(
-    `WITH latest AS (
-       SELECT DISTINCT ON (user_id) user_id, level
-         FROM pace_milestones
-        WHERE user_id = ANY($1::bigint[])
-        ORDER BY user_id, id DESC
+    `WITH roster AS (
+      SELECT DISTINCT unnest($1::bigint[]) AS user_id
+     ), current_milestones AS (
+      SELECT roster.user_id, max(pace.level) + 1 AS milestone
+        FROM roster
+        JOIN pace_milestones AS pace USING (user_id)
+       GROUP BY roster.user_id
      ), counts AS (
-       SELECT level, count(*)::integer AS student_count
-         FROM latest
-        GROUP BY level
+      SELECT milestone AS level, count(*)::integer AS student_count
+        FROM current_milestones
+       WHERE milestone BETWEEN 1 AND 6
+       GROUP BY milestone
+     ), milestone_zero AS (
+      SELECT greatest(
+        0,
+        (SELECT count(*) FROM roster) - coalesce((SELECT sum(student_count) FROM counts), 0)
+      )::integer AS student_count
      )
      SELECT 'milestone-' || levels.level AS id,
             'Milestone ' || levels.level AS label,
-            levels.level, coalesce(counts.student_count, 0)::integer AS "studentCount"
-       FROM generate_series(0, greatest(6, (SELECT max(level) FROM counts))) AS levels(level)
+            levels.level,
+            CASE
+              WHEN levels.level = 0 THEN (SELECT student_count FROM milestone_zero)
+              ELSE coalesce(counts.student_count, 0)::integer
+            END AS "studentCount"
+       FROM generate_series(0, 6) AS levels(level)
        LEFT JOIN counts USING (level)
       ORDER BY levels.level`,
-    [cursusStudentIds],
+    [milestoneStudentIds],
   );
 }
 

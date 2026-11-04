@@ -35,6 +35,7 @@ describe("milestone persistence", () => {
     expect(counts).toBeLessThan(marker);
     expect(dbQuery.mock.calls[raw][1]).toEqual([JSON.stringify(items)]);
     expect(dbQuery.mock.calls[marker][1]).toEqual(["2026-10-08", 3]);
+    expect(dbQuery.mock.calls[counts][0]).toContain("max(level) + 1");
   });
 
   it("rolls back raw rows and counts when aggregation fails", async () => {
@@ -81,6 +82,16 @@ describe("milestone persistence", () => {
   it("does not expose unfiltered totals for old snapshots without a roster", async () => {
     expect(await readMilestoneDistribution()).toEqual([]);
     expect(query).not.toHaveBeenCalled();
+  });
+
+  it("derives current milestones from each student's highest validated level", async () => {
+    await readMilestoneDistribution([12, 13, 14]);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("max(pace.level) + 1 AS milestone"),
+      [[12, 13, 14]],
+    );
+    expect(vi.mocked(query).mock.calls[0][0]).toContain("SELECT DISTINCT unnest($1::bigint[])");
+    expect(vi.mocked(query).mock.calls[0][0]).toContain("generate_series(0, 6)");
   });
 });
 

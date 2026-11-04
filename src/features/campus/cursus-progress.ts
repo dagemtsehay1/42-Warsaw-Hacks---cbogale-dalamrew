@@ -10,6 +10,7 @@ import type { CampusStats, LevelBandStat } from "@/types/campus";
  *
  * - no `end_at` (still in the cursus),
  * - `blackholed_at` in the future or absent (the blackhole hasn't eaten them),
+ * - active user account (frozen accounts are inactive),
  * - not staff.
  */
 export function currentLearners(
@@ -19,6 +20,7 @@ export function currentLearners(
   return rows.filter(
     (row) =>
       !row.user?.["staff?"] &&
+      row.user?.active !== false &&
       !row.end_at &&
       (!row.blackholed_at || new Date(row.blackholed_at) > now),
   );
@@ -62,6 +64,10 @@ export function buildLevelDistribution(
  * "Cadet" when they finish.
  */
 const POST_COMMON_CORE_GRADES = new Set(["transcender", "alumni"]);
+
+export function isCommonCoreLearner(row: FortyTwoCursusUser): boolean {
+  return !POST_COMMON_CORE_GRADES.has((row.grade ?? "").toLowerCase());
+}
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 

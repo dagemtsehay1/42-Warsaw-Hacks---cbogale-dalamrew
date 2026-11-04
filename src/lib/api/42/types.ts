@@ -26,6 +26,8 @@ export type FortyTwoCampus = {
 
 export type FortyTwoUser = {
   id: number;
+  /** False for inactive accounts, including frozen students. */
+  active?: boolean;
   login: string;
   first_name: string;
   last_name: string;

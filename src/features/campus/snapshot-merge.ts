@@ -71,6 +71,7 @@ export function mergeSnapshotWithPrevious(
       };
       merged.levelDistribution = previous.levelDistribution;
       merged.cursusStudentIds = previous.cursusStudentIds;
+      merged.milestoneStudentIds = previous.milestoneStudentIds;
     },
     next.stats.studentsInCursus === 0 && previous.stats.studentsInCursus > 0,
   );

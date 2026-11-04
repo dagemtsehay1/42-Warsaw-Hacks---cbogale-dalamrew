@@ -19,6 +19,7 @@ import {
   buildCampusStats,
   buildLevelDistribution,
   currentLearners,
+  isCommonCoreLearner,
 } from "@/features/campus/cursus-progress";
 import { pickTopSession, weekStart } from "@/features/campus/sessions";
 import type { FortyTwoCoalition, FortyTwoUser } from "@/lib/api/42/types";
@@ -392,6 +393,7 @@ export async function buildDashboardPayload(): Promise<DashboardPayload> {
     pulse,
     stats,
     cursusStudentIds: learners.map((row) => row.user.id),
+    milestoneStudentIds: learners.filter(isCommonCoreLearner).map((row) => row.user.id),
     levelDistribution,
     recentPasses,
     activeProjects,

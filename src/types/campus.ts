@@ -195,6 +195,8 @@ export type DashboardPayload = {
   stats: CampusStats;
   /** User IDs behind studentsInCursus; absent in snapshots made before roster tracking. */
   cursusStudentIds?: number[];
+  /** Active, non-transcender/non-alumni user IDs used for milestone 0–6 counts. */
+  milestoneStudentIds?: number[];
   levelDistribution: LevelBandStat[];
   recentPasses: ProjectPass[];
   activeProjects: ActiveProjectStat[];

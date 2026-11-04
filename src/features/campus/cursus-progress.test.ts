@@ -3,6 +3,7 @@ import {
   buildCampusStats,
   buildLevelDistribution,
   currentLearners,
+  isCommonCoreLearner,
   TOP_LEVEL_BAND,
 } from "@/features/campus/cursus-progress";
 import type { FortyTwoCursusUser } from "@/lib/api/42/types";
@@ -60,6 +61,16 @@ describe("currentLearners", () => {
     const kept = currentLearners(rows, NOW);
     expect(kept).toHaveLength(1);
     expect(kept[0].end_at).toBeNull();
+  });
+
+  it("drops inactive accounts, including frozen students", () => {
+    expect(currentLearners([learner({ user: { ...learner().user, active: false } })], NOW)).toHaveLength(0);
+  });
+
+  it("excludes transcenders and alumni from the milestone roster", () => {
+    expect(isCommonCoreLearner(learner({ grade: "Cadet" }))).toBe(true);
+    expect(isCommonCoreLearner(learner({ grade: "Transcender" }))).toBe(false);
+    expect(isCommonCoreLearner(learner({ grade: "Alumni" }))).toBe(false);
   });
 });
 
